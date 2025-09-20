@@ -13,8 +13,9 @@ def main(cfg):
     elif cfg.Method == "RF":
         from test_rf import test
         return test(cfg)
-    else: 
+    else:
         raise NotImplementedError
+
 
 if __name__ == "__main__":
     main()
