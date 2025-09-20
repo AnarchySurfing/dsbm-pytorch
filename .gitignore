@@ -131,6 +131,7 @@ dmypy.json
 experiments/
 
 .idea/
+.vscode/
 
 /data/
 
