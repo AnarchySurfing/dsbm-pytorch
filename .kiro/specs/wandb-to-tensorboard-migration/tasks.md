@@ -27,7 +27,7 @@
   - Create unit tests for image logging with various formats
   - _Requirements: 1.3, 2.3_
 
-- [ ] 3. Update configuration system to support TensorBoard
+- [x] 3. Update configuration system to support TensorBoard
 
 
 
@@ -39,7 +39,7 @@
   <!-- - Create unit tests for configuration parsing -->
   - _Requirements: 3.1, 3.2, 3.3, 4.3_
 
-- [ ] 4. Remove wandb dependencies and update imports
+- [x] 4. Remove wandb dependencies and update imports
   - Update logger.py imports to make wandb optional
   - Remove wandb from required dependencies in bridge.def
   - Add tensorboard as required dependency
@@ -71,7 +71,7 @@
   - Test image logging during plot_and_test_step calls
   - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3_
 
-- [ ] 8. Add performance optimizations and cleanup
+- [x] 8. Add performance optimizations and cleanup
   - Optimize image logging performance with batching
   - Implement efficient log directory management
   - Add log rotation for long-running experiments
