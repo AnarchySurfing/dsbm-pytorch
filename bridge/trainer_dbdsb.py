@@ -21,9 +21,11 @@ from .runners.ema import EMAHelper
 from torchdiffeq import odeint
 
 
+# IPF_DBDSB 类：实现基于迭代路径积分（IPF）的双向扩散桥采样训练器，支持前向和后向网络训练、采样和缓存管理。
 class IPF_DBDSB:
     def __init__(self, init_ds, final_ds, mean_final, var_final, args, accelerator=None, final_cond_model=None,
                  valid_ds=None, test_ds=None):
+        # 初始化训练器参数，包括数据集、模型配置和超参数。
         self.accelerator = accelerator
         self.device = self.accelerator.device  # local device for each process
 
@@ -89,6 +91,7 @@ class IPF_DBDSB:
 
         # get data
         self.build_dataloaders()
+        # 根据SDE类型初始化Langevin动态，用于采样和训练
         if self.args.sde == "ve":
             self.langevin = DBDSB_VE(self.sigma, self.num_steps, self.timesteps, self.shape_x, self.shape_y, self.args.first_coupling, self.args.mean_match)
         elif self.args.sde == "vp":
@@ -112,12 +115,15 @@ class IPF_DBDSB:
         self.stride_log = self.args.log_stride
 
     def get_logger(self, name='logs'):
+        # 获取日志记录器，用于记录训练或测试日志。
         return get_logger(self.args, name)
 
     def get_plotter(self):
+        # 获取绘图器，用于可视化训练过程。
         return get_plotter(self, self.args)
 
     def build_checkpoints(self):
+        # 构建检查点管理逻辑，包括加载和保存模型状态。
         self.first_pass = True  # Load and use checkpointed networks during first pass
         self.ckpt_dir = './checkpoints/'
         self.ckpt_prefixes = ["net_b", "sample_net_b", "optimizer_b", "net_f", "sample_net_f", "optimizer_f"]
@@ -126,6 +132,7 @@ class IPF_DBDSB:
             os.makedirs(self.ckpt_dir, exist_ok=True)
             os.makedirs(self.cache_dir, exist_ok=True)
 
+        # 检查是否从检查点恢复训练
         if self.args.get('checkpoint_run', False):
             self.resume, self.checkpoint_it, self.checkpoint_pass, self.step = \
                 True, self.args.checkpoint_it, self.args.checkpoint_pass, self.args.checkpoint_iter
@@ -143,6 +150,7 @@ class IPF_DBDSB:
                 self.optimizer_checkpoint_f = hydra.utils.to_absolute_path(self.args.optimizer_checkpoint_f)
             
         else:
+            # 自动查找最新检查点
             self.ckpt_dir_load = os.path.abspath(self.ckpt_dir)
             ckpt_dir_load_list = os.path.normpath(self.ckpt_dir_load).split(os.sep)
             if 'test' in ckpt_dir_load_list:
@@ -167,6 +175,7 @@ class IPF_DBDSB:
 
         if self.first_pass and self.resume:
             if self.resume_f:
+                # 加载前向网络状态
                 try:
                     net_f.load_state_dict(torch.load(self.checkpoint_f))
                 except:
@@ -178,6 +187,7 @@ class IPF_DBDSB:
                     net_f.load_state_dict(new_state_dict)
 
             if self.resume:
+                # 加载后向网络状态
                 try:
                     net_b.load_state_dict(torch.load(self.checkpoint_b))
                 except:
@@ -200,15 +210,18 @@ class IPF_DBDSB:
             self.net.update({'b': net_b})
 
     def accelerate(self, forward_or_backward):
+        # 使用加速器准备指定的网络和优化器。
         (self.net[forward_or_backward], self.optimizer[forward_or_backward]) = self.accelerator.prepare(
             self.net[forward_or_backward], self.optimizer[forward_or_backward])
 
     def update_ema(self, forward_or_backward):
+        # 更新指定方向的指数移动平均（EMA）助手。
         if self.args.ema:
             self.ema_helpers[forward_or_backward] = EMAHelper(mu=self.args.ema_rate, device=self.device)
             self.ema_helpers[forward_or_backward].register(self.accelerator.unwrap_model(self.net[forward_or_backward]))
 
     def build_ema(self):
+        # 构建EMA助手，用于模型参数的平滑更新。
         if self.args.ema:
             self.ema_helpers = {}
 
@@ -230,6 +243,7 @@ class IPF_DBDSB:
                     self.ema_helpers['b'].register(sample_net_b)
 
     def build_dataloader(self, ds, batch_size, shuffle=True, drop_last=True, repeat=True):
+        # 构建数据加载器，支持多进程和重复采样。
         def worker_init_fn(worker_id):
             np.random.seed(np.random.get_state()[1][0] + worker_id + self.accelerator.process_index * self.args.num_workers)
         dl_kwargs = {"num_workers": self.args.num_workers,
@@ -243,6 +257,7 @@ class IPF_DBDSB:
         return dl
 
     def build_dataloaders(self):
+        # 构建所有必要的数据加载器，包括训练、缓存和测试。
         self.plot_npar = min(self.args.plot_npar, len(self.init_ds))
         self.test_npar = min(self.args.test_npar, len(self.init_ds))
 
@@ -276,6 +291,7 @@ class IPF_DBDSB:
             self.save_final_dl = None
             self.save_final_dl_repeat = None
 
+        # 获取数据形状
         batch = next(self.cache_init_dl)
         batch_x = batch[0]
         batch_y = batch[1]
@@ -285,6 +301,7 @@ class IPF_DBDSB:
         self.shape_y = shape_y
 
     def get_sample_net(self, fb):
+        # 获取指定方向的采样网络（使用EMA或原始网络）。
         if self.args.ema:
             sample_net = self.ema_helpers[fb].ema_copy(self.accelerator.unwrap_model(self.net[fb]))
         else:
@@ -294,6 +311,7 @@ class IPF_DBDSB:
         return sample_net
 
     def new_cacheloader(self, sample_direction, n, build_dataloader=True, refresh_idx=0):
+        # 创建新的缓存加载器，用于采样中间数据。
         sample_net = self.get_sample_net(sample_direction)
         sample_fn = partial(self.apply_net, net=sample_net, fb=sample_direction)
 
@@ -321,6 +339,7 @@ class IPF_DBDSB:
             return new_dl
 
     def train(self):
+        # 执行完整的IPF训练循环，包括前向和后向迭代。
         for n in range(self.checkpoint_it, self.n_ipf + 1):
 
             self.accelerator.print('IPF iteration: ' + str(n) + '/' + str(self.n_ipf))
@@ -332,6 +351,7 @@ class IPF_DBDSB:
                 self.ipf_iter('f', n)
 
     def sample_batch(self, init_dl, final_dl):
+        # 从数据加载器采样一批初始和最终数据。
         mean_final = self.mean_final
         std_final = self.std_final
 
@@ -358,6 +378,7 @@ class IPF_DBDSB:
         return init_batch_x, init_batch_y, final_batch_x, mean_final, var_final
 
     def backward_sample(self, final_batch_x, y_c, permute=True, num_steps=None):
+        # 执行后向采样，生成从最终分布到初始分布的序列。
         sample_net = self.get_sample_net('b')
         sample_net.eval()
         sample_fn = partial(self.apply_net, net=sample_net, fb="b")
@@ -375,6 +396,7 @@ class IPF_DBDSB:
         return x_tot_c, self.num_steps if num_steps is None else num_steps
 
     def backward_sample_ode(self, final_batch_x, y_c, permute=True):
+        # 使用ODE方法执行后向采样，提高效率。
         sample_net_b = self.get_sample_net('b')
         sample_net_b.eval()
         sample_fn_b = partial(self.apply_net, net=sample_net_b, fb="b")
@@ -402,6 +424,7 @@ class IPF_DBDSB:
         return x_tot_c, node_drift.nfe
 
     def forward_sample(self, init_batch_x, init_batch_y, permute=True, num_steps=None):
+        # 执行前向采样，生成从初始分布到最终分布的序列。
         sample_net = self.get_sample_net('f')
         sample_net.eval()
         sample_fn = partial(self.apply_net, net=sample_net, fb="f")
@@ -452,6 +475,7 @@ class IPF_DBDSB:
     #     return x_tot, node_drift.nfe
 
     def plot_and_test_step(self, i, n, fb, sampler=None):
+        # 执行绘图和测试步骤，记录指标。
         self.set_seed(seed=0 + self.accelerator.process_index)
         test_metrics = self.plotter(i, n, fb, sampler='sde' if sampler is None else sampler)
 
@@ -460,15 +484,18 @@ class IPF_DBDSB:
         return test_metrics
 
     def set_seed(self, seed=0):
+        # 设置随机种子，确保可重复性。
         torch.manual_seed(seed)
         np.random.seed(seed)
         torch.cuda.manual_seed_all(seed)
 
     def clear(self):
+        # 清理GPU内存和缓存。
         self.accelerator.free_memory()
         torch.cuda.empty_cache()
 
     def build_optimizers(self, forward_or_backward=None):
+        # 构建优化器，并加载检查点状态。
         optimizer_f, optimizer_b = get_optimizer(self.net['f'], self.args), get_optimizer(self.net['b'], self.args)
 
         if self.first_pass and self.resume:
@@ -485,6 +512,7 @@ class IPF_DBDSB:
             self.optimizer.update({'b': optimizer_b})
 
     def save_step(self, i, n, fb):
+        # 保存训练步骤，包括检查点和测试。
         num_iter = self.compute_max_iter(fb, n)
 
         if i % self.stride == 0 or i == num_iter:
@@ -492,6 +520,7 @@ class IPF_DBDSB:
             self.plot_and_test_step(i, n, fb)
     
     def save_ckpt(self, i, n, fb):
+        # 保存模型和优化器检查点。
         if self.accelerator.is_main_process:
             name_net = f'net_{fb}_{n:03}_{i:07}.ckpt'
             name_net_ckpt = os.path.join(self.ckpt_dir, name_net)
@@ -512,9 +541,11 @@ class IPF_DBDSB:
             #         os.remove(existing_ckpts[ckpt_i])
 
     def save_current_ckpt(self):
+        # 保存当前训练状态的检查点。
         self.save_ckpt(self.i, self.n, self.fb)
     
     def find_last_ckpt(self):
+        # 查找最新的有效检查点文件。
         existing_ckpts_dict = {}
         for ckpt_prefix in self.ckpt_prefixes:
             existing_ckpts = sorted(glob.glob(os.path.join(self.ckpt_dir_load, f"{ckpt_prefix}_**.ckpt")))
@@ -582,6 +613,7 @@ class IPF_DBDSB:
             return True, checkpoint_it, checkpoint_pass, checkpoint_step, existing_ckpt_b, existing_ckpt_f
 
     def ipf_iter(self, forward_or_backward, n):
+        # 执行单个IPF迭代，包括训练循环和缓存更新。
         if self.first_pass:
             step = self.step
         else:
@@ -609,8 +641,10 @@ class IPF_DBDSB:
             return first_it
         first_it = first_it_fn(forward_or_backward, n)
 
+        # 训练循环
         for i in tqdm(range(step, num_iter + 1), mininterval=30):
             
+            # 刷新缓存数据加载器
             if (i == step) or ((i-1) % self.args.cache_refresh_stride == 0):
                 new_dl = None
                 torch.cuda.empty_cache()
@@ -622,6 +656,7 @@ class IPF_DBDSB:
             self.set_seed(seed=self.compute_current_step(i, n) * self.accelerator.num_processes + self.accelerator.process_index)
 
             y = None
+            # 采样训练数据
             if first_it:
                 x0, y, x1, _, _ = self.sample_batch(self.init_dl, self.final_dl)
             else:
@@ -638,6 +673,7 @@ class IPF_DBDSB:
                 y = y.to(self.device)
                 y = y.repeat_interleave(self.num_repeat_data, dim=0)
 
+            # 计算损失并反向传播
             pred, std = self.apply_net(x, y, t, net=self.net[forward_or_backward], fb=forward_or_backward, return_scale=True)
 
             if self.args.loss_scale:
@@ -655,6 +691,7 @@ class IPF_DBDSB:
             else:
                 total_norm = 0.
 
+            # 记录日志
             if i == 1 or i % self.stride_log == 0 or i == num_iter:
                 self.logger.log_metrics({'fb': forward_or_backward,
                                          'ipf': n,
@@ -664,6 +701,7 @@ class IPF_DBDSB:
                                          "num_repeat_data": self.num_repeat_data,
                                          "data_epochs": self.data_epochs}, step=self.compute_current_step(i, n))
 
+            # 更新模型参数
             self.optimizer[forward_or_backward].step()
             self.optimizer[forward_or_backward].zero_grad(set_to_none=True)
             if self.args.ema:
@@ -687,6 +725,7 @@ class IPF_DBDSB:
         self.first_pass = False
 
     def apply_net(self, x, y, t, net, fb, return_scale=False):
+        # 应用网络进行预测，并可选返回尺度因子。
         out = net.forward(x, y, t)
         if (not self.args.loss_scale) and (not self.std_trick):
             std = 1.
@@ -702,9 +741,11 @@ class IPF_DBDSB:
             return out
 
     def compute_current_step(self, i, n):
+        # 计算当前全局训练步骤编号。
         return i + self.num_iter*max(n-2, 0) + self.first_num_iter * (1 if n > 1 else 0)
     
     def compute_max_iter(self, forward_or_backward, n):
+        # 计算指定迭代的最大训练步数。
         if n == 1:
             num_iter = self.first_num_iter
         else:
@@ -712,6 +753,7 @@ class IPF_DBDSB:
         return num_iter
 
     def compute_prev_it(self, forward_or_backward, n):
+        # 计算前一个迭代的方向和编号。
         if forward_or_backward == 'b':
             prev_direction = 'f'
             prev_n = n-1
@@ -721,6 +763,7 @@ class IPF_DBDSB:
         return prev_direction, prev_n
 
     def compute_next_it(self, forward_or_backward, n):
+        # 计算下一个迭代的方向和编号。
         if forward_or_backward == 'b':
             next_direction = 'f'
             next_n = n
