@@ -7,7 +7,7 @@ import torchvision.datasets
 import torchvision.transforms as transforms
 import os
 from functools import partial
-from .logger import CSVLogger, WandbLogger, TensorBoardLogger, Logger
+from .logger import CSVLogger, TensorBoardLogger, Logger
 from torch.utils.data import DataLoader
 from bridge.data.afhq import AFHQ
 from bridge.data.downscaler import DownscalerDataset
@@ -333,21 +333,13 @@ def get_logger(args, name):
         return CSVLogger(**kwargs)
 
     if logger_tag == WANDB_TAG:
-        log_dir = os.getcwd()
-        if not args.use_default_wandb_name:
-            run_name = os.path.normpath(os.path.relpath(log_dir, os.path.join(
-                hydra.utils.to_absolute_path(args.paths.experiments_dir_name), args.name))).replace("\\", "/")
-        else:
-            run_name = None
-        data_tag = args.data.dataset
-        config = OmegaConf.to_container(args, resolve=True)
-
-        wandb_entity = os.environ['WANDB_ENTITY']
-        assert len(wandb_entity) > 0, "WANDB_ENTITY not set"
-
-        kwargs = {'name': run_name, 'project': 'dsbm_' + args.name, 'prefix': name, 'entity': wandb_entity,
-                  'tags': [data_tag], 'config': config, 'id': str(args.wandb_id) if args.wandb_id is not None else None}
-        return WandbLogger(**kwargs)
+        # WandbLogger is deprecated - suggest alternatives
+        error_msg = (
+            "WandbLogger is no longer supported in this project. "
+            "Please use TensorBoard logging by setting LOGGER: TensorBoard in your config, "
+            "or CSV logging by setting LOGGER: CSV in your config."
+        )
+        raise ValueError(error_msg)
 
     if logger_tag == TENSORBOARD_TAG:
         # Check if tensorboard is available
