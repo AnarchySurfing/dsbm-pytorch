@@ -6,7 +6,7 @@ defaults:
 
 name: gaussian
 seed: null
-a: 0.1
+a: 1
 dim: 5
 sigma: 1
 num_steps: 20
