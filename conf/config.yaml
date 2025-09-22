@@ -12,11 +12,12 @@ defaults:
 name: ${Dataset}_${data.dataset}
 run: 0
 seed: 42
+# Legacy wandb settings (deprecated - kept for backward compatibility)
 use_default_wandb_name: False
-wandb_id: null # leave as null for wandb to assign this
+wandb_id: null
 
 # logging
-LOGGER: Wandb  # CSV, TensorBoard, NONE
+LOGGER: TensorBoard  # CSV, TensorBoard, NONE (Wandb is deprecated)
 CSV_log_dir: ./
 
 # TensorBoard configuration (used when LOGGER: TensorBoard)
