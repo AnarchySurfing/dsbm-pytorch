@@ -7,7 +7,7 @@ import torchvision.datasets
 import torchvision.transforms as transforms
 import os
 from functools import partial
-from .logger import CSVLogger, WandbLogger, Logger
+from .logger import CSVLogger, WandbLogger, TensorBoardLogger, Logger
 from torch.utils.data import DataLoader
 from bridge.data.afhq import AFHQ
 from bridge.data.downscaler import DownscalerDataset
@@ -321,6 +321,7 @@ def get_valid_test_datasets(args):
 LOGGER = 'LOGGER'
 CSV_TAG = 'CSV'
 WANDB_TAG = 'Wandb'
+TENSORBOARD_TAG = 'TensorBoard'
 NOLOG_TAG = 'NONE'
 
 
@@ -348,5 +349,88 @@ def get_logger(args, name):
                   'tags': [data_tag], 'config': config, 'id': str(args.wandb_id) if args.wandb_id is not None else None}
         return WandbLogger(**kwargs)
 
+    if logger_tag == TENSORBOARD_TAG:
+        # Check if tensorboard is available
+        try:
+            import tensorboard
+            from torch.utils.tensorboard import SummaryWriter
+        except ImportError as e:
+            error_msg = (
+                "TensorBoard logging requested but tensorboard is not installed. "
+                "Please install tensorboard with: pip install tensorboard\n"
+                "Alternatively, you can use CSV logging by setting LOGGER: CSV in your config."
+            )
+            raise ImportError(error_msg) from e
+        
+        # Get TensorBoard configuration from args with proper defaults
+        log_dir = getattr(args, 'tensorboard_log_dir', './tensorboard_logs')
+        tb_name = getattr(args, 'tensorboard_name', name)
+        version = getattr(args, 'tensorboard_version', None)
+        
+        # Create absolute path for log directory
+        log_dir = hydra.utils.to_absolute_path(log_dir)
+        
+        # Ensure log directory exists and is writable
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+        except PermissionError:
+            error_msg = (
+                f"Cannot create TensorBoard log directory at '{log_dir}'. "
+                "Please check directory permissions or specify a different path using 'tensorboard_log_dir' in your config."
+            )
+            raise PermissionError(error_msg)
+        except Exception as e:
+            error_msg = (
+                f"Failed to create TensorBoard log directory at '{log_dir}': {str(e)}\n"
+                "Please check the path and permissions, or specify a different path using 'tensorboard_log_dir' in your config."
+            )
+            raise RuntimeError(error_msg) from e
+        
+        # Validate configuration parameters
+        if not isinstance(tb_name, str) or not tb_name.strip():
+            tb_name = name or "experiment"
+        
+        if version is not None and not isinstance(version, (str, int)):
+            print(f"Warning: tensorboard_version should be a string or int, got {type(version)}. Using default version.")
+            version = None
+        
+        kwargs = {
+            'save_dir': log_dir,
+            'name': tb_name,
+            'version': version,
+            'log_graph': False,  # Disable graph logging by default for performance
+            'default_hp_metric': False  # Disable default hp metric to avoid conflicts
+        }
+        
+        try:
+            logger = TensorBoardLogger(**kwargs)
+        except Exception as e:
+            error_msg = (
+                f"Failed to initialize TensorBoard logger: {str(e)}\n"
+                "This might be due to invalid configuration parameters or directory permissions. "
+                "Please check your tensorboard_log_dir, tensorboard_name, and tensorboard_version settings."
+            )
+            raise RuntimeError(error_msg) from e
+        
+        # Log hyperparameters if available
+        try:
+            if hasattr(args, 'data') or hasattr(args, 'model'):
+                config = OmegaConf.to_container(args, resolve=True)
+                logger.log_hyperparams(config)
+        except Exception as e:
+            print(f"Warning: Failed to log hyperparameters to TensorBoard: {str(e)}")
+            # Continue without hyperparameter logging rather than failing
+        
+        return logger
+
     if logger_tag == NOLOG_TAG:
         return Logger()
+    
+    # Handle invalid logger types
+    valid_loggers = [CSV_TAG, WANDB_TAG, TENSORBOARD_TAG, NOLOG_TAG]
+    error_msg = (
+        f"Invalid logger type '{logger_tag}'. "
+        f"Valid options are: {', '.join(valid_loggers)}\n"
+        f"Please update your config file to use one of these logger types."
+    )
+    raise ValueError(error_msg)

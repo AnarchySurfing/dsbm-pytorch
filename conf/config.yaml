@@ -16,8 +16,13 @@ use_default_wandb_name: False
 wandb_id: null # leave as null for wandb to assign this
 
 # logging
-LOGGER: Wandb  # CSV
+LOGGER: Wandb  # CSV, TensorBoard, NONE
 CSV_log_dir: ./
+
+# TensorBoard configuration (used when LOGGER: TensorBoard)
+tensorboard_log_dir: ./tensorboard_logs  # Directory for TensorBoard logs
+tensorboard_name: ${name}  # Experiment name for TensorBoard
+tensorboard_version: null  # Version/run identifier (null for auto-increment)
 
 # training
 optimizer: Adam
