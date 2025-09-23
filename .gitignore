@@ -129,6 +129,8 @@ dmypy.json
 .pyre/
 
 experiments/
+logs/
+tensorboard_logs/
 
 .idea/
 .vscode/
