@@ -6,6 +6,9 @@
 # 设置CUDA架构
 export TORCH_CUDA_ARCH_LIST="8.9"
 
+export CUDA_VISIBLE_DEVICES=1
+
+
 # 指定Python路径
 PYTHON_PATH="/home/myx123/.conda/envs/brige/bin/python"
 
@@ -17,13 +20,13 @@ case $STAGE in
     "stable")
         echo "🔧 Running STABLE training (for debugging)..."
         $PYTHON_PATH main.py dataset=visible_infrared_stable model=spectral_unet_stable \
-            data.image_size=128 batch_size=4 num_iter=5000 \
+            data.image_size=64 batch_size=32 num_iter=50000 \
             hydra.job.chdir=false "$@"
         ;;
     "production")
         echo "🚀 Running PRODUCTION training (recommended)..."
         $PYTHON_PATH main.py dataset=visible_infrared_production model=spectral_unet_production \
-            data.image_size=256 batch_size=8 num_iter=100000 \
+            data.image_size=64 batch_size=32 num_iter=100000 \
             hydra.job.chdir=false "$@"
         ;;
     "hq")
