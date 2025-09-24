@@ -9,7 +9,7 @@ cdsb: False  # Keep non-conditional for stability
 Dataset: visible_infrared
 data:
   dataset: "VisibleInfrared"
-  image_size: 256  # Higher resolution for better quality
+  image_size: 64  # Higher resolution for better quality
   channels: 3
   random_flip: true  # Enable augmentation for better generalization
   spectral_augmentation: true  # Enable spectral augmentations
@@ -25,9 +25,12 @@ data:
     spectral_consistency_weight: 0.05  # Conservative weight
     
   # Dataset paths
-  root_dir: "data/visible_infrared"
-  visible_subdir: "visible"
-  infrared_subdir: "infrared"
+  # root_dir: "data/visible_infrared"
+  # visible_subdir: "visible"
+  # infrared_subdir: "infrared"
+  root_dir: "/home/myx123/dataset/m3fd"
+  visible_subdir: "vi"
+  infrared_subdir: "ir"
 
 # transfer settings
 transfer: false
@@ -41,7 +44,7 @@ load: true
 
 # device configuration
 device: cuda
-num_workers: 4
+num_workers: 16
 pin_memory: true
 prefetch_factor: 2
 
@@ -61,11 +64,11 @@ use_prev_net: true
 ema: true
 ema_rate: 0.9999  # Higher EMA for better quality
 grad_clipping: true
-grad_clip: 1.0  # Standard gradient clipping
+grad_clip: 0.5  # Standard gradient clipping
 batch_size: 8  # Balanced batch size
 num_iter: 100000  # Full training
 n_ipf: 50  # Standard IPF iterations
-lr: 0.0001  # Standard learning rate
+lr: 0.00005  # Standard learning rate
 weight_decay: 0.01
 
 # Sampling parameters

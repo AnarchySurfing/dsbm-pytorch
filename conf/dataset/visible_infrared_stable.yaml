@@ -35,7 +35,7 @@ load: true
 
 # device configuration
 device: cuda
-num_workers: 2  # Reduced for stability
+num_workers: 8  # Reduced for stability
 pin_memory: true
 
 # logging and monitoring
