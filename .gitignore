@@ -131,6 +131,7 @@ dmypy.json
 experiments/
 logs/
 tensorboard_logs/
+spectral_evaluation_results/
 
 .idea/
 .vscode/
