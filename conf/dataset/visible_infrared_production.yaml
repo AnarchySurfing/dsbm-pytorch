@@ -12,7 +12,7 @@ data:
   image_size: 64  # Higher resolution for better quality
   channels: 3
   random_flip: true  # Enable augmentation for better generalization
-  spectral_augmentation: true  # Enable spectral augmentations
+  spectral_augmentation: false  # Enable spectral augmentations
   normalize_method: "standard"
   
   # Spectral-specific parameters
