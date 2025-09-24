@@ -11,6 +11,7 @@ from .logger import CSVLogger, TensorBoardLogger, Logger
 from torch.utils.data import DataLoader
 from bridge.data.afhq import AFHQ
 from bridge.data.downscaler import DownscalerDataset
+from bridge.data.visible_ir import VisibleIR
 
 cmp = lambda x: transforms.Compose([*x])
 
@@ -171,6 +172,8 @@ DATASET_CIFAR10 = 'cifar10'
 DATASET_AFHQ = 'afhq'
 DATASET_DOWNSCALER_LOW = 'downscaler_low'
 DATASET_DOWNSCALER_HIGH = 'downscaler_high'
+DATASET_VISIBLE = 'visible'
+DATASET_INFRARED = 'infrared'
 
 def get_datasets(args):
     dataset_tag = getattr(args, DATASET)
@@ -224,6 +227,11 @@ def get_datasets(args):
         
         init_ds = DownscalerDataset(root=root, resolution=512, wavenumber=wavenumber, split=split, transform=cmp(train_transform))
 
+    if dataset_tag == DATASET_VISIBLE:
+        root = os.path.join(data_dir, 'visible_ir')
+        train_transform = [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        init_ds = VisibleIR(root_dir=root, transform=cmp(train_transform), domain='visible')
+
     # FINAL DATASET
 
     final_ds, mean_final, var_final = get_final_dataset(args, init_ds)
@@ -266,6 +274,11 @@ def get_final_dataset(args, init_ds):
             split = args.data.get('split', "train")
             
             final_ds = DownscalerDataset(root=root, resolution=64, split=split, transform=cmp(train_transform))
+
+        if dataset_transfer_tag == DATASET_INFRARED:
+            root = os.path.join(data_dir, 'visible_ir')
+            train_transform = [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+            final_ds = VisibleIR(root_dir=root, transform=cmp(train_transform), domain='infrared')
 
     else:
         if args.adaptive_mean:
