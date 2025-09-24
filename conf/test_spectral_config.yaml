@@ -1,0 +1,64 @@
+# @package _global_
+
+# Test configuration for spectral evaluation system
+# This config is used to test the spectral configuration integration
+
+defaults:
+  - _self_
+  - model: spectral_unet_small
+  - method: dbdsb
+  - dataset: visible_infrared
+
+name: test_spectral_${Dataset}_${data.dataset}
+run: 0
+seed: 42
+
+# logging
+LOGGER: TensorBoard
+tensorboard_log_dir: ./test_spectral_logs
+tensorboard_name: ${name}
+tensorboard_version: null
+
+# training (reduced for testing)
+optimizer: Adam
+test_batch_size: 4
+plot_level: 2
+cache_refresh_stride: 100
+cache_num_steps: 10
+test_num_steps: 10
+normalize_x1: False
+
+# Test-specific overrides
+data:
+  image_size: 64  # Smaller for faster testing
+  train_split: 0.6
+  val_split: 0.2
+  test_split: 0.2
+
+model:
+  num_channels: 32  # Even smaller for testing
+  num_res_blocks: 1
+
+# Reduced training parameters for testing
+batch_size: 2
+num_iter: 100
+n_ipf: 5
+lr: 0.001
+num_steps: 5
+
+# Test paths
+paths: 
+  experiments_dir_name: test_experiments
+  data_dir_name: test_data
+
+# Disable checkpointing for tests
+checkpoint_run: False
+autostart_next_it: False
+
+# Test evaluation settings
+evaluation:
+  compute_spectral_metrics: true
+  save_comparison_plots: true
+  metrics_history_frequency: 10
+  evaluation_frequency: 20
+  fid_batch_size: 4

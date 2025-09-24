@@ -1,0 +1,18 @@
+# @package _global_
+
+# Stable Spectral U-Net Model Configuration
+# Optimized to prevent NaN issues during training
+
+Model: UNET
+model: 
+    # Conservative architecture parameters
+    num_channels: 32  # Smaller model for stability
+    channel_mult: [1, 2, 2, 4]  # Simpler architecture
+    num_res_blocks: 2  # Fewer blocks
+    num_heads: 4
+    attention_resolutions: "16,8"  # Less attention
+    dropout: 0.0  # No dropout initially
+    use_checkpoint: false
+    use_scale_shift_norm: true
+    resblock_updown: true
+    temb_scale: 100  # Lower scale for stability

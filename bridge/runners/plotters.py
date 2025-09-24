@@ -30,7 +30,7 @@ def make_gif(plot_paths, output_directory='./gif', gif_name='gif'):
 
 class Plotter(object):
 
-    def __init__(self, ipf, args, im_dir = './im', gif_dir='./gif'):
+    def __init__(self, ipf, args, im_dir = 'im', gif_dir='gif'):
         self.ipf = ipf
         self.args = args
         self.plot_level = self.args.plot_level
@@ -277,7 +277,7 @@ class Plotter(object):
 
 class ImPlotter(Plotter):
 
-    def __init__(self, ipf, args, im_dir = './im', gif_dir='./gif'):
+    def __init__(self, ipf, args, im_dir = 'im', gif_dir='gif'):
         super().__init__(ipf, args, im_dir=im_dir, gif_dir=gif_dir)
         self.num_plots_grid = 100
 
@@ -311,15 +311,18 @@ class ImPlotter(Plotter):
 
             filename_grid = 'im_grid_start'
             filepath_grid_list = self.save_image(x_start[:self.num_plots_grid], filename_grid, im_dir)
-            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, filepath_grid_list, step=self.step, fb=fb)
+            tensor_grid_list = self.get_image_tensor_for_logging(x_start[:self.num_plots_grid])
+            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, tensor_grid_list, step=self.step, fb=fb)
 
             filename_grid = 'im_grid_last'
             filepath_grid_list = self.save_image(x_tot_grid[-1], filename_grid, im_dir)
-            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, filepath_grid_list, step=self.step, fb=fb)
+            tensor_grid_list = self.get_image_tensor_for_logging(x_tot_grid[-1])
+            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, tensor_grid_list, step=self.step, fb=fb)
 
             filename_grid = 'im_grid_data_x'
             filepath_grid_list = self.save_image(x_init[:self.num_plots_grid], filename_grid, im_dir)
-            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, filepath_grid_list, step=self.step, fb=fb)
+            tensor_grid_list = self.get_image_tensor_for_logging(x_init[:self.num_plots_grid])
+            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, tensor_grid_list, step=self.step, fb=fb)
 
             if self.plot_level >= 2:
                 plot_paths = []
@@ -356,13 +359,22 @@ class ImPlotter(Plotter):
 
     def save_image(self, tensor, name, dir, **kwargs):
         fp = os.path.join(dir, f'{name}.png')
+        # Save image to file
         save_image(tensor[:self.num_plots_grid], fp, nrow=10)
+        
+        # Return file path for backward compatibility (GIF generation, etc.)
         return [fp]
+    
+    def get_image_tensor_for_logging(self, tensor):
+        """Get tensor data for TensorBoard logging"""
+        import torchvision.utils as vutils
+        grid_tensor = vutils.make_grid(tensor[:self.num_plots_grid], nrow=10, normalize=True, scale_each=True)
+        return [grid_tensor]
 
 
 class DownscalerPlotter(Plotter):
 
-    def __init__(self, ipf, args, im_dir = './im', gif_dir='./gif'):
+    def __init__(self, ipf, args, im_dir = 'im', gif_dir='gif'):
         super().__init__(ipf, args, im_dir=im_dir, gif_dir=gif_dir)
         self.num_plots_grid = 16
         assert self.ipf.cdsb
@@ -385,22 +397,30 @@ class DownscalerPlotter(Plotter):
             os.makedirs(gif_dir, exist_ok=True)
 
             filename_grid = 'im_grid_start'
-            filepath_grid_list = self.save_image(x_start[:self.num_plots_grid], filename_grid, im_dir, domain=0 if fb=='f' else 1)
-            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, filepath_grid_list, step=self.step, fb=fb)
+            domain_start = 0 if fb=='f' else 1
+            filepath_grid_list = self.save_image(x_start[:self.num_plots_grid], filename_grid, im_dir, domain=domain_start)
+            tensor_grid_list = self.get_image_tensor_for_logging(x_start[:self.num_plots_grid], domain=domain_start)
+            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, tensor_grid_list, step=self.step, fb=fb)
 
             filename_grid = 'im_grid_last'
-            filepath_grid_list = self.save_image(x_tot_grid[-1], filename_grid, im_dir, domain=1 if fb=='f' else 0)
-            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, filepath_grid_list, step=self.step, fb=fb)
+            domain_last = 1 if fb=='f' else 0
+            filepath_grid_list = self.save_image(x_tot_grid[-1], filename_grid, im_dir, domain=domain_last)
+            tensor_grid_list = self.get_image_tensor_for_logging(x_tot_grid[-1], domain=domain_last)
+            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, tensor_grid_list, step=self.step, fb=fb)
 
             filename_grid = 'im_grid_data_x'
             filepath_grid_list = self.save_image(x_init[:self.num_plots_grid], filename_grid, im_dir, domain=0)
-            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, filepath_grid_list, step=self.step, fb=fb)
+            tensor_grid_list = self.get_image_tensor_for_logging(x_init[:self.num_plots_grid], domain=0)
+            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, tensor_grid_list, step=self.step, fb=fb)
 
             # Save y differently (no processing needed)
             filename_grid = 'im_grid_data_y'
             filepath_grid = os.path.join(im_dir, f'{filename_grid}.png')
             save_image(y_start[:self.num_plots_grid], filepath_grid, normalize=True, nrow=4)
-            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, [filepath_grid], step=self.step, fb=fb)
+            # Create tensor for TensorBoard
+            import torchvision.utils as vutils
+            y_tensor = vutils.make_grid(y_start[:self.num_plots_grid], nrow=4, normalize=True, scale_each=True)
+            self.ipf.save_logger.log_image(self.prefix_fn(dl_name, sampler) + filename_grid, [y_tensor], step=self.step, fb=fb)
 
             if self.plot_level >= 2:
                 plot_paths = []
@@ -444,6 +464,7 @@ class DownscalerPlotter(Plotter):
     def save_image(self, tensor, name, dir, domain=0):
         assert domain in [0, 1]
         fp_list = []
+        
         if domain == 0:
             inverted_tensor, _ = self.ipf.init_ds.invert_preprocessing(tensor)
         else:
@@ -461,3 +482,18 @@ class DownscalerPlotter(Plotter):
         fp_list.append(fp)
 
         return fp_list
+    
+    def get_image_tensor_for_logging(self, tensor, domain=0):
+        """Get tensor data for TensorBoard logging"""
+        if domain == 0:
+            inverted_tensor, _ = self.ipf.init_ds.invert_preprocessing(tensor)
+        else:
+            inverted_tensor, _ = self.ipf.final_ds.invert_preprocessing(tensor)
+        inverted_tensor = vutils.make_grid(inverted_tensor[:self.num_plots_grid], nrow=4)
+        
+        tensor_list = []
+        # Convert to tensor for TensorBoard
+        tensor_list.append(torch.from_numpy(plt.cm.Blues_r(inverted_tensor[0].cpu().numpy())[..., :3]).permute(2, 0, 1))
+        tensor_list.append(torch.from_numpy(plt.cm.bwr_r(inverted_tensor[1].cpu().numpy())[..., :3]).permute(2, 0, 1))
+        
+        return tensor_list

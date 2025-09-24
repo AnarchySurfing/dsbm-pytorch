@@ -1,0 +1,80 @@
+# @package _global_
+
+# High Quality Visible-to-Infrared Dataset Configuration
+# Maximum quality for final production models
+
+cdsb: True  # Enable conditional diffusion for best quality
+
+# data 
+Dataset: visible_infrared
+data:
+  dataset: "VisibleInfrared"
+  image_size: 512  # High resolution
+  channels: 3
+  cond_channels: 3  # For conditional diffusion
+  random_flip: true
+  spectral_augmentation: true
+  normalize_method: "adaptive"
+  
+  # Advanced spectral parameters
+  spectral:
+    visible_channels: 3
+    infrared_channels: 3
+    wavelength_range: [400, 14000]
+    temperature_range: [273, 373]
+    enable_cross_spectral_loss: true
+    spectral_consistency_weight: 0.1
+    
+  # Dataset paths
+  root_dir: "data/visible_infrared"
+  visible_subdir: "visible"
+  infrared_subdir: "infrared"
+
+# transfer settings
+transfer: false
+
+# Distribution parameters
+final_adaptive: true
+adaptive_mean: true
+mean_final: torch.zeros([${data.channels}, ${data.image_size}, ${data.image_size}])
+var_final: 1 * torch.ones([${data.channels}, ${data.image_size}, ${data.image_size}])
+load: true
+
+# device configuration
+device: cuda
+num_workers: 6
+pin_memory: true
+prefetch_factor: 3
+
+# logging and monitoring
+log_stride: 200
+gif_stride: 5000
+plot_npar: 16
+test_npar: 500
+test_batch_size: 8
+cache_npar: 2000
+cache_batch_size: 50
+num_repeat_data: 1
+cache_refresh_stride: 10000
+
+# training parameters - high quality
+use_prev_net: true
+ema: true
+ema_rate: 0.9999
+grad_clipping: true
+grad_clip: 1.0
+batch_size: 2  # Small batch for high resolution
+num_iter: 200000  # Extended training
+n_ipf: 100  # More IPF iterations
+lr: 0.00005  # Lower LR for stability
+weight_decay: 0.01
+
+# Sampling parameters
+num_steps: 200  # High quality sampling
+
+# Memory optimization for high resolution
+memory:
+  gradient_accumulation_steps: 8  # Simulate larger batch
+  mixed_precision: true
+  max_memory_per_gpu: 0.95
+  enable_memory_efficient_attention: true

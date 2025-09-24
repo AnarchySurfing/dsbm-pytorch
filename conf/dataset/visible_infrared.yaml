@@ -1,0 +1,102 @@
+# @package _global_
+
+# Visible-to-Infrared Image Translation Dataset Configuration
+# This configuration supports paired visible-infrared datasets for cross-spectral translation
+
+cdsb: True  # Enable conditional diffusion for paired data
+
+# data 
+Dataset: visible_infrared
+data:
+  dataset: "VisibleInfrared"
+  image_size: 256  # Standard size for spectral images
+  channels: 3  # RGB for visible, 3-channel for infrared representation
+  cond_channels: 3  # Conditioning channels (visible input)
+  random_flip: true  # Data augmentation
+  spectral_augmentation: true  # Enable spectral-specific augmentations
+  normalize_method: "standard"  # standard, minmax, or adaptive
+  
+  # Spectral-specific parameters
+  spectral:
+    visible_channels: 3  # RGB channels
+    infrared_channels: 3  # Infrared representation channels
+    wavelength_range: [400, 14000]  # Visible: 400-700nm, Infrared: 700-14000nm
+    temperature_range: [273, 373]  # Temperature range in Kelvin for thermal IR
+    enable_cross_spectral_loss: true
+    spectral_consistency_weight: 0.1
+    
+  # Dataset paths (to be overridden in specific experiments)
+  # root_dir: "data/visible_infrared"
+  # visible_subdir: "visible"
+  # infrared_subdir: "infrared"
+  root_dir: "/home/myx123/dataset/m3fd"
+  visible_subdir: "vi"
+  infrared_subdir: "ir"
+  
+
+# transfer settings (for cross-spectral translation)
+transfer: false  # Set to true for domain transfer experiments
+Dataset_transfer: visible_infrared
+
+# Distribution parameters for spectral data
+final_adaptive: true  # Adapt to actual data distribution
+adaptive_mean: true  # Use adaptive mean for better convergence
+mean_final: torch.zeros([${data.channels}, ${data.image_size}, ${data.image_size}])
+var_final: 1 * torch.ones([${data.channels}, ${data.image_size}, ${data.image_size}])
+load: true
+
+# device configuration
+device: cuda
+num_workers: 4  # Increased for spectral data loading
+pin_memory: true
+prefetch_factor: 2  # Improve data loading performance
+
+# logging and monitoring
+log_stride: 50  # More frequent logging for spectral training
+gif_stride: 1000  # Generate comparison GIFs
+plot_npar: 16  # Number of samples for visualization
+test_npar: 1000  # Test samples for evaluation
+test_batch_size: 32  # Batch size for testing
+cache_npar: 5000  # Cache size for spectral data
+cache_batch_size: 100  # Cache batch size
+num_repeat_data: 1
+cache_refresh_stride: 2000
+
+# training parameters optimized for spectral translation
+use_prev_net: true
+ema: true
+ema_rate: 0.9999  # Higher EMA rate for stable spectral training
+grad_clipping: true
+grad_clip: 1.0
+batch_size: 16  # Smaller batch size for high-resolution spectral images
+num_iter: 100000  # Training iterations
+n_ipf: 50  # IPF iterations
+lr: 0.0001  # Learning rate
+weight_decay: 0.01  # Weight decay for regularization
+
+# Sampling parameters
+num_steps: 100  # Sampling steps for quality
+
+# Spectral evaluation settings
+evaluation:
+  compute_spectral_metrics: true
+  save_comparison_plots: true
+  metrics_history_frequency: 100
+  fid_batch_size: 50
+  evaluation_frequency: 1000  # Evaluate every N iterations
+  
+  # Metrics to compute
+  metrics:
+    - "fid"
+    - "lpips" 
+    - "psnr"
+    - "ssim"
+    - "spectral_consistency"
+    - "cross_spectral_correlation"
+
+# Memory optimization for high-resolution spectral images
+memory:
+  gradient_accumulation_steps: 2
+  mixed_precision: true  # Enable mixed precision training
+  max_memory_per_gpu: 0.9  # Use 90% of GPU memory
+  enable_memory_efficient_attention: true

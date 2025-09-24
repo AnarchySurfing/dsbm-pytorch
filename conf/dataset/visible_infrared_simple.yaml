@@ -1,0 +1,81 @@
+# @package _global_
+
+# Simple Visible-to-Infrared Dataset Configuration
+# Non-conditional version for standard U-Net models
+
+cdsb: False  # Disable conditional diffusion
+
+# data 
+Dataset: visible_infrared
+data:
+  dataset: "VisibleInfrared"
+  image_size: 256
+  channels: 3  # RGB channels
+  random_flip: true
+  spectral_augmentation: true
+  normalize_method: "standard"
+  
+  # Spectral-specific parameters
+  spectral:
+    visible_channels: 3
+    infrared_channels: 3
+    wavelength_range: [400, 14000]
+    temperature_range: [273, 373]
+    enable_cross_spectral_loss: false  # Disabled for simple mode
+    spectral_consistency_weight: 0.0
+    
+  # Dataset paths
+  # root_dir: "data/visible_infrared"
+  # visible_subdir: "visible"
+  # infrared_subdir: "infrared"
+  root_dir: "/home/myx123/dataset/m3fd"
+  visible_subdir: "vi"
+  infrared_subdir: "ir"
+
+# transfer settings
+transfer: false
+Dataset_transfer: visible_infrared
+
+# Distribution parameters
+final_adaptive: true
+adaptive_mean: true
+mean_final: torch.zeros([${data.channels}, ${data.image_size}, ${data.image_size}])
+var_final: 1 * torch.ones([${data.channels}, ${data.image_size}, ${data.image_size}])
+load: true
+
+# device configuration
+device: cuda
+num_workers: 4
+pin_memory: true
+
+# logging and monitoring
+log_stride: 50
+gif_stride: 1000
+plot_npar: 16
+test_npar: 1000
+test_batch_size: 32
+cache_npar: 5000
+cache_batch_size: 100
+num_repeat_data: 1
+cache_refresh_stride: 2000
+
+# training parameters
+use_prev_net: true
+ema: true
+ema_rate: 0.9999
+grad_clipping: true
+grad_clip: 1.0
+batch_size: 16
+num_iter: 100000
+n_ipf: 50
+lr: 0.0001
+weight_decay: 0.01
+
+# Sampling parameters
+num_steps: 100
+
+# Memory optimization
+memory:
+  gradient_accumulation_steps: 1
+  mixed_precision: true
+  max_memory_per_gpu: 0.9

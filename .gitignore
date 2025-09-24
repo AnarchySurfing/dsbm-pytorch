@@ -132,6 +132,10 @@ experiments/
 logs/
 tensorboard_logs/
 spectral_evaluation_results/
+gif/
+im/
+cache*
+checkpoints/
 
 .idea/
 .vscode/

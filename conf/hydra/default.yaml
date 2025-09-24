@@ -1,0 +1,19 @@
+# Hydra configuration for proper experiment directory structure
+
+defaults:
+  - _self_
+
+# Ensure experiments are stored in the correct directory structure
+run:
+  dir: ${paths.experiments_dir_name}/${name}/${hydra:runtime.choices}/${seed}
+
+sweep:
+  dir: ${paths.experiments_dir_name}/${name}
+  subdir: ${hydra:runtime.choices}/${seed}
+
+# Keep working directory as project root for relative imports
+job:
+  chdir: false  # Don't change working directory
+
+# Hydra output configuration
+output_subdir: .hydra

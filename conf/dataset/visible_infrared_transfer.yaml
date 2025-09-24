@@ -1,0 +1,119 @@
+# @package _global_
+
+# Visible-to-Infrared Transfer Learning Configuration
+# For domain adaptation and transfer learning experiments
+
+cdsb: True  # Enable conditional diffusion for paired data
+
+# data 
+Dataset: visible_infrared
+data:
+  dataset: "VisibleInfraredTransfer"
+  image_size: 256
+  channels: 3
+  cond_channels: 3
+  random_flip: true
+  spectral_augmentation: true
+  normalize_method: "adaptive"  # Adaptive normalization for transfer learning
+  
+  # Transfer learning specific parameters
+  spectral:
+    visible_channels: 3
+    infrared_channels: 3
+    wavelength_range: [400, 14000]
+    temperature_range: [273, 373]
+    enable_cross_spectral_loss: true
+    spectral_consistency_weight: 0.2  # Higher weight for transfer learning
+    domain_adaptation_weight: 0.1
+    
+  # Dataset paths
+  root_dir: "data/visible_infrared"
+  visible_subdir: "visible"
+  infrared_subdir: "infrared"
+
+# transfer settings
+transfer: true  # Enable transfer learning mode
+Dataset_transfer: visible_infrared
+
+# Distribution parameters
+final_adaptive: true
+adaptive_mean: true
+mean_final: torch.zeros([${data.channels}, ${data.image_size}, ${data.image_size}])
+var_final: 1 * torch.ones([${data.channels}, ${data.image_size}, ${data.image_size}])
+load: true
+
+# device configuration
+device: cuda
+num_workers: 4
+pin_memory: true
+prefetch_factor: 2
+
+# logging and monitoring (more frequent for transfer learning)
+log_stride: 25
+gif_stride: 500
+plot_npar: 16
+test_npar: 500
+test_batch_size: 16
+cache_npar: 2000
+cache_batch_size: 50
+num_repeat_data: 2  # More data repetition for transfer learning
+cache_refresh_stride: 1000
+
+# training parameters for transfer learning
+use_prev_net: true
+ema: true
+ema_rate: 0.999  # Slightly lower EMA rate for faster adaptation
+grad_clipping: true
+grad_clip: 0.5  # Lower gradient clipping for fine-tuning
+batch_size: 8  # Smaller batch size for transfer learning
+num_iter: 50000  # Fewer iterations for transfer learning
+n_ipf: 30  # Fewer IPF iterations
+lr: 0.00005  # Lower learning rate for fine-tuning
+weight_decay: 0.005  # Lower weight decay
+
+# Sampling parameters
+num_steps: 50  # Fewer sampling steps for faster evaluation
+
+# Transfer learning specific evaluation
+evaluation:
+  compute_spectral_metrics: true
+  save_comparison_plots: true
+  metrics_history_frequency: 50
+  fid_batch_size: 25
+  evaluation_frequency: 500
+  
+  # Additional transfer learning metrics
+  compute_domain_adaptation_metrics: true
+  source_domain_evaluation: true
+  target_domain_evaluation: true
+  
+  metrics:
+    - "fid"
+    - "lpips" 
+    - "psnr"
+    - "ssim"
+    - "spectral_consistency"
+    - "cross_spectral_correlation"
+    - "domain_adaptation_score"
+
+# Memory optimization
+memory:
+  gradient_accumulation_steps: 4  # Higher accumulation for smaller batches
+  mixed_precision: true
+  max_memory_per_gpu: 0.8
+  enable_memory_efficient_attention: true
+
+# Transfer learning specific settings
+transfer_learning:
+  freeze_encoder: false  # Whether to freeze encoder layers
+  freeze_decoder: false  # Whether to freeze decoder layers
+  progressive_unfreezing: true  # Gradually unfreeze layers
+  unfreezing_schedule: [0.2, 0.4, 0.6, 0.8]  # Fraction of training when to unfreeze
+  
+  # Learning rate scheduling for different parts
+  encoder_lr_multiplier: 0.1  # Lower LR for encoder
+  decoder_lr_multiplier: 1.0  # Normal LR for decoder
+  
+  # Regularization
+  spectral_regularization: true
+  consistency_regularization_weight: 0.1

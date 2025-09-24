@@ -2,6 +2,7 @@
 
 defaults:
   - _self_
+  - hydra: default
   # - launcher: slurm_gpu
   - job
   - model: UNET
@@ -18,10 +19,10 @@ wandb_id: null
 
 # logging
 LOGGER: TensorBoard  # CSV, TensorBoard, NONE (Wandb is deprecated)
-CSV_log_dir: ./
+CSV_log_dir: .  # Relative to experiment directory
 
 # TensorBoard configuration (used when LOGGER: TensorBoard)
-tensorboard_log_dir: ./tensorboard_logs  # Directory for TensorBoard logs
+tensorboard_log_dir: ./tensorboard_logs  # In project root for cross-experiment comparison
 tensorboard_name: ${name}  # Experiment name for TensorBoard
 tensorboard_version: null  # Version/run identifier (null for auto-increment)
 

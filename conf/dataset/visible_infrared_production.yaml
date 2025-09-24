@@ -1,0 +1,85 @@
+# @package _global_
+
+# Production Visible-to-Infrared Dataset Configuration
+# Balanced performance and stability for serious training
+
+cdsb: False  # Keep non-conditional for stability
+
+# data 
+Dataset: visible_infrared
+data:
+  dataset: "VisibleInfrared"
+  image_size: 256  # Higher resolution for better quality
+  channels: 3
+  random_flip: true  # Enable augmentation for better generalization
+  spectral_augmentation: true  # Enable spectral augmentations
+  normalize_method: "standard"
+  
+  # Spectral-specific parameters
+  spectral:
+    visible_channels: 3
+    infrared_channels: 3
+    wavelength_range: [400, 14000]
+    temperature_range: [273, 373]
+    enable_cross_spectral_loss: true
+    spectral_consistency_weight: 0.05  # Conservative weight
+    
+  # Dataset paths
+  root_dir: "data/visible_infrared"
+  visible_subdir: "visible"
+  infrared_subdir: "infrared"
+
+# transfer settings
+transfer: false
+
+# Distribution parameters
+final_adaptive: true  # Use adaptive for better results
+adaptive_mean: true
+mean_final: torch.zeros([${data.channels}, ${data.image_size}, ${data.image_size}])
+var_final: 1 * torch.ones([${data.channels}, ${data.image_size}, ${data.image_size}])
+load: true
+
+# device configuration
+device: cuda
+num_workers: 4
+pin_memory: true
+prefetch_factor: 2
+
+# logging and monitoring
+log_stride: 100
+gif_stride: 2000
+plot_npar: 16
+test_npar: 1000
+test_batch_size: 16
+cache_npar: 5000
+cache_batch_size: 100
+num_repeat_data: 1
+cache_refresh_stride: 5000
+
+# training parameters - production quality
+use_prev_net: true
+ema: true
+ema_rate: 0.9999  # Higher EMA for better quality
+grad_clipping: true
+grad_clip: 1.0  # Standard gradient clipping
+batch_size: 8  # Balanced batch size
+num_iter: 100000  # Full training
+n_ipf: 50  # Standard IPF iterations
+lr: 0.0001  # Standard learning rate
+weight_decay: 0.01
+
+# Sampling parameters
+num_steps: 100  # Higher quality sampling
+
+# Memory optimization
+memory:
+  gradient_accumulation_steps: 2
+  mixed_precision: true  # Enable for efficiency
+  max_memory_per_gpu: 0.9
+
+# Evaluation settings
+evaluation:
+  compute_spectral_metrics: true
+  save_comparison_plots: true
+  metrics_history_frequency: 500
+  evaluation_frequency: 2000

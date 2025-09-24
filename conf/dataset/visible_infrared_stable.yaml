@@ -1,0 +1,71 @@
+# @package _global_
+
+# Stable Visible-to-Infrared Dataset Configuration
+# Optimized to prevent NaN issues during training
+
+cdsb: False  # Non-conditional for stability
+
+# data 
+Dataset: visible_infrared
+data:
+  dataset: "VisibleInfrared"
+  image_size: 128  # Smaller size for stability
+  channels: 3
+  random_flip: false  # Disable augmentation initially
+  spectral_augmentation: false  # Disable for stability
+  normalize_method: "standard"
+  
+  # Dataset paths
+  # root_dir: "data/visible_infrared"
+  # visible_subdir: "visible"
+  # infrared_subdir: "infrared"
+  root_dir: "/home/myx123/dataset/m3fd"
+  visible_subdir: "vi"
+  infrared_subdir: "ir"
+
+# transfer settings
+transfer: false
+
+# Distribution parameters - more conservative
+final_adaptive: false  # Use fixed parameters for stability
+adaptive_mean: false
+mean_final: torch.zeros([${data.channels}, ${data.image_size}, ${data.image_size}])
+var_final: 1 * torch.ones([${data.channels}, ${data.image_size}, ${data.image_size}])
+load: true
+
+# device configuration
+device: cuda
+num_workers: 2  # Reduced for stability
+pin_memory: true
+
+# logging and monitoring
+log_stride: 10  # More frequent logging to catch issues
+gif_stride: 500
+plot_npar: 8
+test_npar: 100
+test_batch_size: 8
+cache_npar: 1000
+cache_batch_size: 50
+num_repeat_data: 1
+cache_refresh_stride: 500
+
+# training parameters - optimized for stability
+use_prev_net: true
+ema: true
+ema_rate: 0.999  # Slightly lower for stability
+grad_clipping: true
+grad_clip: 0.5  # Strong gradient clipping
+batch_size: 4  # Smaller batch size
+num_iter: 50000
+n_ipf: 30  # Fewer IPF iterations
+lr: 0.00005  # Lower learning rate
+weight_decay: 0.001  # Lower weight decay
+
+# Sampling parameters
+num_steps: 50  # Fewer steps for stability
+
+# Memory and stability optimization
+memory:
+  gradient_accumulation_steps: 1
+  mixed_precision: false  # Disable mixed precision initially
+  max_memory_per_gpu: 0.8

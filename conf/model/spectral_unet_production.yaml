@@ -1,0 +1,18 @@
+# @package _global_
+
+# Production Spectral U-Net Model Configuration
+# Balanced performance and quality for serious training
+
+Model: UNET
+model: 
+    # Production architecture parameters
+    num_channels: 64  # Good balance of capacity and stability
+    channel_mult: [1, 2, 2, 4, 4]  # Multi-scale processing
+    num_res_blocks: 3  # Sufficient depth
+    num_heads: 8  # Good attention capacity
+    attention_resolutions: "32,16,8"  # Multi-resolution attention
+    dropout: 0.1  # Light regularization
+    use_checkpoint: false  # Disable for speed (enable if memory issues)
+    use_scale_shift_norm: true
+    resblock_updown: true
+    temb_scale: 1000  # Standard scale

@@ -125,9 +125,9 @@ class IPF_DBDSB:
     def build_checkpoints(self):
         # 构建检查点管理逻辑，包括加载和保存模型状态。
         self.first_pass = True  # Load and use checkpointed networks during first pass
-        self.ckpt_dir = './checkpoints/'
+        self.ckpt_dir = 'checkpoints/'  # Relative to experiment directory
         self.ckpt_prefixes = ["net_b", "sample_net_b", "optimizer_b", "net_f", "sample_net_f", "optimizer_f"]
-        self.cache_dir='./cache/'
+        self.cache_dir = 'cache/'  # Relative to experiment directory
         if self.accelerator.is_main_process:
             os.makedirs(self.ckpt_dir, exist_ok=True)
             os.makedirs(self.cache_dir, exist_ok=True)

@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Production Training Script for Spectral Image Translation
+# Usage: ./train_production.sh [stage] [additional_args...]
+
+# 设置CUDA架构
+export TORCH_CUDA_ARCH_LIST="8.9"
+
+# 指定Python路径
+PYTHON_PATH="/home/myx123/.conda/envs/brige/bin/python"
+
+# 获取训练阶段参数
+STAGE=${1:-"production"}  # 默认使用production阶段
+shift  # 移除第一个参数，剩余参数传递给训练
+
+case $STAGE in
+    "stable")
+        echo "🔧 Running STABLE training (for debugging)..."
+        $PYTHON_PATH main.py dataset=visible_infrared_stable model=spectral_unet_stable \
+            data.image_size=128 batch_size=4 num_iter=5000 \
+            hydra.job.chdir=false "$@"
+        ;;
+    "production")
+        echo "🚀 Running PRODUCTION training (recommended)..."
+        $PYTHON_PATH main.py dataset=visible_infrared_production model=spectral_unet_production \
+            data.image_size=256 batch_size=8 num_iter=100000 \
+            hydra.job.chdir=false "$@"
+        ;;
+    "hq")
+        echo "💎 Running HIGH QUALITY training (best results)..."
+        $PYTHON_PATH main.py dataset=visible_infrared_hq model=spectral_conditional_unet \
+            data.image_size=512 batch_size=2 num_iter=200000 \
+            hydra.job.chdir=false "$@"
+        ;;
+    *)
+        echo "❌ Unknown stage: $STAGE"
+        echo "Available stages: stable, production, hq"
+        echo "Usage: ./train_production.sh [stage] [additional_args...]"
+        echo ""
+        echo "Examples:"
+        echo "  ./train_production.sh stable          # Quick test"
+        echo "  ./train_production.sh production      # Recommended"
+        echo "  ./train_production.sh hq              # Best quality"
+        echo "  ./train_production.sh production lr=0.00005  # Custom params"
+        exit 1
+        ;;
+esac
