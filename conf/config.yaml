@@ -21,7 +21,7 @@ LOGGER: TensorBoard  # CSV, TensorBoard, NONE (Wandb is deprecated)
 CSV_log_dir: ./
 
 # TensorBoard configuration (used when LOGGER: TensorBoard)
-tensorboard_log_dir: ./tensorboard_logs  # Directory for TensorBoard logs
+tensorboard_log_dir: ./logs  # Directory for TensorBoard logs
 tensorboard_name: ${name}  # Experiment name for TensorBoard
 tensorboard_version: null  # Version/run identifier (null for auto-increment)
 
