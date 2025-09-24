@@ -20,7 +20,7 @@
   - Integrate with existing caching and EMA systems
   - _Requirements: 1.2, 3.1, 3.3, 7.1, 7.3_
 
-- [ ] 4. Create spectral evaluation module
+- [x] 4. Create spectral evaluation module
   - Implement SpectralEvaluator class with cross-spectral metrics
   - Add FID, LPIPS, PSNR, SSIM computation for spectral images
   - Create visualization functions for visible-infrared-generated comparisons
