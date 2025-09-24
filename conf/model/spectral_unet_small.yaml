@@ -1,0 +1,84 @@
+# @package _global_
+
+# Small Spectral U-Net Model Configuration
+# Optimized for fast experimentation and limited computational resources
+
+Model: UNET  # Use standard UNET implementation with spectral parameters
+model: 
+    # Reduced architecture parameters for faster training
+    num_channels: 64  # Reduced base channels
+    channel_mult: [1, 2, 2, 4]  # Fewer levels
+    num_res_blocks: 2  # Fewer residual blocks
+    num_heads: 4  # Fewer attention heads
+    attention_resolutions: "16,8"  # Attention at fewer resolutions
+    dropout: 0.1
+    use_checkpoint: false  # Disabled for speed
+    use_scale_shift_norm: true
+    resblock_updown: true
+    temb_scale: 1000
+    
+    # Spectral-specific parameters (lightweight)
+    spectral:
+        # Simplified cross-spectral attention
+        enable_cross_spectral_attention: false  # Disabled for speed
+        cross_attention_layers: []
+        spectral_embedding_dim: 32  # Reduced embedding dimension
+        
+        # Basic wavelength conditioning
+        wavelength_conditioning: false  # Simplified for small model
+        temperature_conditioning: false
+        
+        # Simplified multi-scale processing
+        enable_spectral_pyramid: false
+        spectral_fusion_method: "add"  # Simpler fusion
+        
+        # Basic spectral consistency
+        spectral_consistency_loss: true
+        consistency_weight: 0.05  # Lower weight
+        gradient_consistency: true
+        structural_consistency: false  # Disabled for speed
+        
+        # Simplified frequency processing
+        enable_frequency_domain_processing: false
+        spectral_normalization: "batch"  # Standard batch norm
+        
+    # Lightweight architecture optimizations
+    architecture:
+        attention_type: "linear"  # Efficient attention
+        attention_dropout: 0.05
+        residual_scaling: 0.1
+        skip_connection_scaling: 0.2
+        norm_type: "batch"  # Standard batch normalization
+        activation: "relu"  # Faster activation
+        
+    # Training optimizations for small model
+    training:
+        mixed_precision: true  # Enable for speed
+        gradient_clipping: true
+        max_grad_norm: 1.0
+        memory_efficient: false  # Disabled for speed
+        
+        # Simplified loss components
+        loss_weights:
+            reconstruction: 1.0
+            spectral_consistency: 0.05
+            perceptual: 0.0  # Disabled for speed
+            
+    # Fast inference settings
+    inference:
+        enable_fast_sampling: true
+        ddim_eta: 0.0
+        low_memory_mode: false
+        quality_mode: "fast"
+
+# Hardware optimizations for small model
+hardware:
+    gpu:
+        enable_tf32: true
+        enable_flash_attention: false  # May not be available
+        memory_format: "contiguous"  # Standard format
+        
+    distributed:
+        backend: "nccl"
+        find_unused_parameters: false
+        gradient_as_bucket_view: true

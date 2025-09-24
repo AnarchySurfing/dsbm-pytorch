@@ -1,0 +1,23 @@
+# @package _global_
+
+# Spectral Conditional U-Net Model Configuration
+# For visible-to-infrared conditional image translation
+
+Model: DownscalerUNET
+model: 
+    # Base architecture parameters for spectral translation
+    num_channels: 64  # Base number of channels
+    channel_mult: 
+        - 1
+        - 2
+        - 4
+        - 8
+    num_res_blocks: 4  # Residual blocks per resolution level
+    dropout: 0.1  # Dropout rate
+    temb_scale: 1000  # Time embedding scale
+    
+    # Conditional processing parameters
+    mean_bypass: True  # Enable mean bypass for better conditioning
+    scale_mean_bypass: True  # Scale the mean bypass
+    shift_input: True  # Shift input for better conditioning
+    shift_output: True  # Shift output for better results
