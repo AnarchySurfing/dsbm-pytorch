@@ -11,6 +11,7 @@ from .logger import CSVLogger, TensorBoardLogger, Logger
 from torch.utils.data import DataLoader
 from bridge.data.afhq import AFHQ
 from bridge.data.downscaler import DownscalerDataset
+from bridge.data.spectral import VisibleInfraredDataset
 
 cmp = lambda x: transforms.Compose([*x])
 
@@ -26,6 +27,8 @@ def get_plotter(runner, args):
         return ImPlotter(runner, args)
     elif dataset_tag in [DATASET_DOWNSCALER_LOW, DATASET_DOWNSCALER_HIGH]:
         return DownscalerPlotter(runner, args)
+    elif dataset_tag == DATASET_VISIBLE_INFRARED:
+        return ImPlotter(runner, args)  # Use ImPlotter for spectral images
     else:
         return Plotter(runner, args)
 
@@ -37,6 +40,7 @@ MODEL = 'Model'
 BASIC_MODEL = 'Basic'
 UNET_MODEL = 'UNET'
 DOWNSCALER_UNET_MODEL = 'DownscalerUNET'
+SPECTRAL_UNET_MODEL = 'SpectralUNET'
 DDPMPP_MODEL = 'DDPMpp'
 
 NAPPROX = 2000
@@ -84,6 +88,56 @@ def get_model(args):
             "resblock_updown": args.model.resblock_updown,
             "temb_scale": args.model.temb_scale
         }
+
+        net = UNetModel(**kwargs)
+
+    elif model_tag == SPECTRAL_UNET_MODEL:
+        # Spectral U-Net is based on standard U-Net but with spectral-specific configurations
+        image_size = args.data.image_size
+
+        if args.model.channel_mult is not None:
+            channel_mult = args.model.channel_mult
+        else:
+            # Default channel multipliers for spectral images
+            if image_size == 512:
+                channel_mult = (1, 1, 2, 2, 4, 4, 8)
+            elif image_size == 256:
+                channel_mult = (1, 2, 2, 4, 4)
+            elif image_size == 128:
+                channel_mult = (1, 2, 2, 4)
+            elif image_size == 64:
+                channel_mult = (1, 2, 2, 2)
+            else:
+                raise ValueError(f"unsupported image size for spectral model: {image_size}")
+
+        attention_ds = []
+        for res in args.model.attention_resolutions.split(","):
+            if image_size % int(res) == 0:
+                attention_ds.append(image_size // int(res))
+
+        # Base U-Net parameters
+        kwargs = {
+            "in_channels": args.data.channels,
+            "model_channels": args.model.num_channels,
+            "out_channels": args.data.channels,
+            "num_res_blocks": args.model.num_res_blocks,
+            "attention_resolutions": tuple(attention_ds),
+            "dropout": args.model.dropout,
+            "channel_mult": channel_mult,
+            "num_classes": None,
+            "use_checkpoint": args.model.use_checkpoint,
+            "num_heads": args.model.num_heads,
+            "use_scale_shift_norm": args.model.use_scale_shift_norm,
+            "resblock_updown": args.model.resblock_updown,
+            "temb_scale": args.model.temb_scale
+        }
+
+        # Add spectral-specific parameters if available
+        if hasattr(args.model, 'spectral'):
+            spectral_config = args.model.spectral
+            # These would be used by a custom SpectralUNetModel if implemented
+            # For now, we use the standard UNetModel
+            pass
 
         net = UNetModel(**kwargs)
 
@@ -171,6 +225,7 @@ DATASET_CIFAR10 = 'cifar10'
 DATASET_AFHQ = 'afhq'
 DATASET_DOWNSCALER_LOW = 'downscaler_low'
 DATASET_DOWNSCALER_HIGH = 'downscaler_high'
+DATASET_VISIBLE_INFRARED = 'visible_infrared'
 
 def get_datasets(args):
     dataset_tag = getattr(args, DATASET)
@@ -223,6 +278,43 @@ def get_datasets(args):
         split = args.data.get('split', "train")
         
         init_ds = DownscalerDataset(root=root, resolution=512, wavenumber=wavenumber, split=split, transform=cmp(train_transform))
+
+    # VISIBLE-INFRARED DATASET
+    if dataset_tag == DATASET_VISIBLE_INFRARED:
+        # Get dataset configuration
+        root_dir = args.data.get('root_dir', os.path.join(data_dir, 'visible_infrared'))
+        visible_subdir = args.data.get('visible_subdir', 'visible')
+        infrared_subdir = args.data.get('infrared_subdir', 'infrared')
+        
+        # Ensure root directory is absolute path
+        root_dir = hydra.utils.to_absolute_path(root_dir)
+        
+        # Create transforms for spectral data
+        # Note: VisibleInfraredDataset already converts images to tensors in [-1, 1] range
+        train_transform = []
+        
+        # Add augmentations if enabled (these work on tensors)
+        if args.data.get('random_flip', False):
+            train_transform.append(transforms.RandomHorizontalFlip())
+        
+        # Additional spectral augmentations (these work on tensors)
+        if args.data.get('spectral_augmentation', False):
+            # Add color jittering for spectral robustness
+            train_transform.append(transforms.ColorJitter(
+                brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05
+            ))
+        
+        # Note: Normalization is already handled by the dataset to [-1, 1] range
+        
+        # Create the dataset
+        init_ds = VisibleInfraredDataset(
+            root_dir=root_dir,
+            visible_subdir=visible_subdir,
+            infrared_subdir=infrared_subdir,
+            image_size=args.data.image_size,
+            transform=cmp(train_transform) if train_transform else None,
+            validate_pairs=True
+        )
 
     # FINAL DATASET
 

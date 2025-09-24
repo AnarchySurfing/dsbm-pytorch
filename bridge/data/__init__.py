@@ -8,3 +8,10 @@ from .preprocessing import (
     resize_image_pair,
     compute_image_statistics
 )
+from .spectral_evaluator import (
+    SpectralEvaluator,
+    SpectralConsistencyMetric,
+    CrossSpectralCorrelationMetric,
+    SpectralEvaluationResults,
+    create_spectral_evaluator
+)

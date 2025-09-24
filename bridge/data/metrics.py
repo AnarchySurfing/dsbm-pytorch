@@ -32,3 +32,10 @@ if __name__ == "__main__":
     PSNR()
     SSIM()
     FID()
+    
+    # Test spectral evaluator import
+    try:
+        from .spectral_evaluator import SpectralEvaluator
+        print("SpectralEvaluator imported successfully")
+    except ImportError as e:
+        print(f"Failed to import SpectralEvaluator: {e}")
