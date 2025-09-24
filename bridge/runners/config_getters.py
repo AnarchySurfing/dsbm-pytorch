@@ -14,6 +14,7 @@ from bridge.data.downscaler import DownscalerDataset
 
 cmp = lambda x: transforms.Compose([*x])
 
+
 def worker_init_fn(worker_id):
     np.random.seed(worker_id)
     torch.manual_seed(worker_id)
@@ -93,13 +94,13 @@ def get_model(args):
 
         kwargs = {
             "in_channels": args.data.channels,
-            "cond_channels": args.data.cond_channels, 
+            "cond_channels": args.data.cond_channels,
             "model_channels": args.model.num_channels,
             "out_channels": args.data.channels,
             "num_res_blocks": args.model.num_res_blocks,
             "dropout": args.model.dropout,
             "channel_mult": channel_mult,
-            "temb_scale": args.model.temb_scale, 
+            "temb_scale": args.model.temb_scale,
             "mean_bypass": args.model.mean_bypass,
             "scale_mean_bypass": args.model.scale_mean_bypass,
             "shift_input": args.model.shift_input,
@@ -112,6 +113,7 @@ def get_model(args):
         # assert args.data.image_size == 512
         class Config():
             pass
+
         config = Config()
         config.model = Config()
         config.data = Config()
@@ -140,13 +142,12 @@ def get_model(args):
 
         config.data.image_size = args.data.image_size
         config.data.num_channels = args.data.channels
-        config.data.centered = True # assumes data is within -1, 1 and so the model will do no adjustments to it
-
+        config.data.centered = True  # assumes data is within -1, 1 and so the model will do no adjustments to it
 
         net = NCSNpp(config)
 
-       
     return net
+
 
 # Optimizer
 # --------------------------------------------------------------------------------
@@ -171,6 +172,7 @@ DATASET_CIFAR10 = 'cifar10'
 DATASET_AFHQ = 'afhq'
 DATASET_DOWNSCALER_LOW = 'downscaler_low'
 DATASET_DOWNSCALER_HIGH = 'downscaler_high'
+
 
 def get_datasets(args):
     dataset_tag = getattr(args, DATASET)
@@ -199,9 +201,9 @@ def get_datasets(args):
         train_transform = [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
         if args.data.random_flip:
             train_transform.insert(0, transforms.RandomHorizontalFlip())
-        
+
         init_ds = torchvision.datasets.CIFAR10(root=root, train=True, transform=cmp(train_transform), download=True)
-        
+
     # AFHQ DATASET
     if dataset_tag.startswith(DATASET_AFHQ):
         assert args.data.image_size == 512
@@ -221,8 +223,9 @@ def get_datasets(args):
         #     ]
         wavenumber = args.data.get('wavenumber', 0)
         split = args.data.get('split', "train")
-        
-        init_ds = DownscalerDataset(root=root, resolution=512, wavenumber=wavenumber, split=split, transform=cmp(train_transform))
+
+        init_ds = DownscalerDataset(root=root, resolution=512, wavenumber=wavenumber, split=split,
+                                    transform=cmp(train_transform))
 
     # FINAL DATASET
 
@@ -235,7 +238,7 @@ def get_final_dataset(args, init_ds):
         data_dir = hydra.utils.to_absolute_path(args.paths.data_dir_name)
         dataset_transfer_tag = getattr(args, DATASET_TRANSFER)
         mean_final = torch.tensor(0.)
-        var_final = torch.tensor(1.*10**3)  # infty like
+        var_final = torch.tensor(1. * 10 ** 3)  # infty like
 
         if dataset_transfer_tag == DATASET_EMNIST:
             from ..data.emnist import FiveClassEMNIST
@@ -264,16 +267,20 @@ def get_final_dataset(args, init_ds):
                 ]
 
             split = args.data.get('split', "train")
-            
+
             final_ds = DownscalerDataset(root=root, resolution=64, split=split, transform=cmp(train_transform))
 
     else:
         if args.adaptive_mean:
-            vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
+            vec = next(iter(
+                DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[
+                0]
             mean_final = vec.mean(axis=0)
             var_final = eval(args.var_final) if isinstance(args.var_final, str) else torch.tensor([args.var_final])
         elif args.final_adaptive:
-            vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
+            vec = next(iter(
+                DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[
+                0]
             mean_final = vec.mean(axis=0)
             var_final = vec.var(axis=0)
         else:
@@ -300,7 +307,7 @@ def get_valid_test_datasets(args):
         test_transform = [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
         valid_ds = None
         test_ds = torchvision.datasets.MNIST(root=root, train=False, transform=cmp(test_transform), download=True)
-    
+
     # # CIFAR10 DATASET
     # if dataset_tag == DATASET_CIFAR10:
     #     # data_tag = args.data.dataset
@@ -353,15 +360,15 @@ def get_logger(args, name):
                 "Alternatively, you can use CSV logging by setting LOGGER: CSV in your config."
             )
             raise ImportError(error_msg) from e
-        
+
         # Get TensorBoard configuration from args with proper defaults
-        log_dir = getattr(args, 'tensorboard_log_dir', './tensorboard_logs')
+        log_dir = getattr(args, 'tensorboard_log_dir', './logs')
         tb_name = getattr(args, 'tensorboard_name', name)
         version = getattr(args, 'tensorboard_version', None)
-        
+
         # Create absolute path for log directory
         log_dir = hydra.utils.to_absolute_path(log_dir)
-        
+
         # Ensure log directory exists and is writable
         try:
             os.makedirs(log_dir, exist_ok=True)
@@ -377,15 +384,16 @@ def get_logger(args, name):
                 "Please check the path and permissions, or specify a different path using 'tensorboard_log_dir' in your config."
             )
             raise RuntimeError(error_msg) from e
-        
+
         # Validate configuration parameters
         if not isinstance(tb_name, str) or not tb_name.strip():
             tb_name = name or "experiment"
-        
+
         if version is not None and not isinstance(version, (str, int)):
-            print(f"Warning: tensorboard_version should be a string or int, got {type(version)}. Using default version.")
+            print(
+                f"Warning: tensorboard_version should be a string or int, got {type(version)}. Using default version.")
             version = None
-        
+
         kwargs = {
             'save_dir': log_dir,
             'name': tb_name,
@@ -393,7 +401,7 @@ def get_logger(args, name):
             'log_graph': False,  # Disable graph logging by default for performance
             'default_hp_metric': False  # Disable default hp metric to avoid conflicts
         }
-        
+
         try:
             logger = TensorBoardLogger(**kwargs)
         except Exception as e:
@@ -403,7 +411,7 @@ def get_logger(args, name):
                 "Please check your tensorboard_log_dir, tensorboard_name, and tensorboard_version settings."
             )
             raise RuntimeError(error_msg) from e
-        
+
         # Log hyperparameters if available
         try:
             if hasattr(args, 'data') or hasattr(args, 'model'):
@@ -412,12 +420,12 @@ def get_logger(args, name):
         except Exception as e:
             print(f"Warning: Failed to log hyperparameters to TensorBoard: {str(e)}")
             # Continue without hyperparameter logging rather than failing
-        
+
         return logger
 
     if logger_tag == NOLOG_TAG:
         return Logger()
-    
+
     # Handle invalid logger types
     valid_loggers = [CSV_TAG, WANDB_TAG, TENSORBOARD_TAG, NOLOG_TAG]
     error_msg = (
