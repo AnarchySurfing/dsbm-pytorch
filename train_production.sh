@@ -26,7 +26,7 @@ case $STAGE in
     "production")
         echo "🚀 Running PRODUCTION training (recommended)..."
         $PYTHON_PATH main.py dataset=visible_infrared_production model=spectral_unet_production \
-            data.image_size=64 batch_size=32 num_iter=100000 \
+            data.image_size=64 batch_size=32 num_iter=5000 \
             hydra.job.chdir=false "$@"
         ;;
     "hq")
