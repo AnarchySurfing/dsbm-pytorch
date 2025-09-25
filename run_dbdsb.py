@@ -12,7 +12,7 @@ def run(args, output_dir):
     # 根据 args.device 决定是否使用 CPU，并启用批次拆分以节省内存
     accelerator = Accelerator(cpu=args.device == 'cpu', split_batches=True)
     # 打印当前工作目录，便于调试和日志记录
-    accelerator.print('Directory: ' + os.getcwd())
+    accelerator.print('Directory: ' + output_dir)
 
     # 获取初始数据集、目标数据集以及目标分布的均值和方差
     init_ds, final_ds, mean_final, var_final = get_datasets(args)

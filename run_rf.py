@@ -9,7 +9,7 @@ from accelerate import Accelerator
 
 def run(args, output_dir):
     accelerator = Accelerator(cpu=args.device == 'cpu', split_batches=True)
-    accelerator.print('Directory: ' + os.getcwd())
+    accelerator.print('Directory: ' + output_dir)
 
     init_ds, final_ds, mean_final, var_final = get_datasets(args)
     valid_ds, test_ds = get_valid_test_datasets(args)

@@ -11,7 +11,7 @@ def run(args, output_dir):
     # 创建Accelerator实例，根据设备选择CPU或GPU，并启用批次分割
     accelerator = Accelerator(cpu=args.device == 'cpu', split_batches=True)
     # 打印当前工作目录
-    accelerator.print('Directory: ' + os.getcwd())
+    accelerator.print('Directory: ' + output_dir)
 
     # 获取初始数据集、最终数据集、最终均值和方差
     init_ds, final_ds, mean_final, var_final = get_datasets(args)

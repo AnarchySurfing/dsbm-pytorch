@@ -109,8 +109,8 @@ class IPF_DSB:
         self.accelerator.print("Data epochs:", self.data_epochs)
 
         self.test_num_steps = self.num_steps
-        self.plotter = self.get_plotter()
         self.output_dir = output_dir
+        self.plotter = self.get_plotter()
         self.cache_dir = os.path.join(self.output_dir, 'cache')
 
         if self.accelerator.is_main_process:

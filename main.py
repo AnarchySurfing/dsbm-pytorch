@@ -1,10 +1,11 @@
 import os
 import hydra
+from hydra.core.hydra_config import HydraConfig
 
 
 @hydra.main(config_path="conf", config_name="config", version_base=None)
 def main(cfg):
-    output_dir = os.getcwd()
+    output_dir = HydraConfig.get().runtime.output_dir
     if cfg.Method == "DSB":
         from run_dsb import run
         return run(cfg, output_dir)
