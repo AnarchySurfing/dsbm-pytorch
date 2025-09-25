@@ -121,7 +121,7 @@ class IPF_DBDSB:
 
     def get_plotter(self):
         # 获取绘图器，用于可视化训练过程。
-        return get_plotter(self, self.args)
+        return get_plotter(self, self.args, self.output_dir)
 
     def build_checkpoints(self):
         # 构建检查点管理逻辑，包括加载和保存模型状态。
