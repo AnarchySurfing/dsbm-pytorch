@@ -4,15 +4,16 @@ import hydra
 
 @hydra.main(config_path="conf", config_name="config", version_base=None)
 def main(cfg):
+    output_dir = os.getcwd()
     if cfg.Method == "DSB":
         from run_dsb import run
-        return run(cfg)
+        return run(cfg, output_dir)
     elif cfg.Method == "DBDSB":
         from run_dbdsb import run
-        return run(cfg)
+        return run(cfg, output_dir)
     elif cfg.Method == "RF":
         from run_rf import run
-        return run(cfg)
+        return run(cfg, output_dir)
     else: 
         raise NotImplementedError
 

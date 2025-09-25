@@ -20,7 +20,7 @@ from .runners.ema import EMAHelper
 class IPF_DSB:
     # 初始化：配置设备、数据集、模型、优化器、缓存和训练参数
     def __init__(self, init_ds, final_ds, mean_final, var_final, args, accelerator=None, final_cond_model=None,
-                 valid_ds=None, test_ds=None):
+                 valid_ds=None, test_ds=None, output_dir='.'):
         # 将 accelerator 的本地设备赋值，后续 tensor/model 需移动到该设备
         self.accelerator = accelerator
         self.device = self.accelerator.device  # local device for each process
@@ -110,10 +110,11 @@ class IPF_DSB:
 
         self.test_num_steps = self.num_steps
         self.plotter = self.get_plotter()
-        self.cache_dir = './cache/'
+        self.output_dir = output_dir
+        self.cache_dir = os.path.join(self.output_dir, 'cache')
 
         if self.accelerator.is_main_process:
-            ckpt_dir = './checkpoints/'
+            ckpt_dir = os.path.join(self.output_dir, 'checkpoints')
             os.makedirs(ckpt_dir, exist_ok=True)
             existing_versions = []
             for d in os.listdir(ckpt_dir):
@@ -137,7 +138,7 @@ class IPF_DSB:
 
     def get_plotter(self):
         # 返回用于可视化/评估的 plotter 对象
-        return get_plotter(self, self.args)
+        return get_plotter(self, self.args, self.output_dir)
 
     def build_models(self, forward_or_backward=None):
         # 构建/加载模型：支持按需重建前向/后向网络并从checkpoint载入参数

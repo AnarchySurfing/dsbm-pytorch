@@ -26,19 +26,19 @@ from torchdiffeq import odeint
 class IPF_RF(IPF_DBDSB):
     # 初始化函数
     def __init__(self, init_ds, final_ds, mean_final, var_final, args, accelerator=None, final_cond_model=None,
-                 valid_ds=None, test_ds=None):
+                 valid_ds=None, test_ds=None, output_dir='.'):
         # 调用父类的初始化方法
         super().__init__(init_ds, final_ds, mean_final, var_final, args, accelerator=accelerator, final_cond_model=final_cond_model,
-                         valid_ds=valid_ds, test_ds=test_ds)
+                         valid_ds=valid_ds, test_ds=test_ds, output_dir=output_dir)
         # 初始化Langevin采样器，这里使用DBDSB_VE
         self.langevin = DBDSB_VE(0., self.num_steps, self.timesteps, self.shape_x, self.shape_y, first_coupling="ind", ot_sampler=self.args.ot_sampler)
 
     # 构建检查点相关设置
     def build_checkpoints(self):
         self.first_pass = True  # Load and use checkpointed networks during first pass
-        self.ckpt_dir = './checkpoints/'
+        self.ckpt_dir = os.path.join(self.output_dir, 'checkpoints')
         self.ckpt_prefixes = ["net_b", "sample_net_b", "optimizer_b"]
-        self.cache_dir='./cache/'
+        self.cache_dir=os.path.join(self.output_dir, 'cache')
         # 如果是主进程，则创建检查点和缓存目录
         if self.accelerator.is_main_process:
             os.makedirs(self.ckpt_dir, exist_ok=True)
