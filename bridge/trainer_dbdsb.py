@@ -24,7 +24,7 @@ from torchdiffeq import odeint
 # IPF_DBDSB 类：实现基于迭代路径积分（IPF）的双向扩散桥采样训练器，支持前向和后向网络训练、采样和缓存管理。
 class IPF_DBDSB:
     def __init__(self, init_ds, final_ds, mean_final, var_final, args, accelerator=None, final_cond_model=None,
-                 valid_ds=None, test_ds=None):
+                 valid_ds=None, test_ds=None, output_dir='.'):
         # 初始化训练器参数，包括数据集、模型配置和超参数。
         self.accelerator = accelerator
         self.device = self.accelerator.device  # local device for each process
@@ -76,6 +76,7 @@ class IPF_DBDSB:
         self.timesteps = self.gammas / self.T
 
         # run from checkpoint
+        self.output_dir = output_dir
         self.build_checkpoints()
         
         # get models
@@ -120,14 +121,14 @@ class IPF_DBDSB:
 
     def get_plotter(self):
         # 获取绘图器，用于可视化训练过程。
-        return get_plotter(self, self.args)
+        return get_plotter(self, self.args, self.output_dir)
 
     def build_checkpoints(self):
         # 构建检查点管理逻辑，包括加载和保存模型状态。
         self.first_pass = True  # Load and use checkpointed networks during first pass
-        self.ckpt_dir = 'checkpoints/'  # Relative to experiment directory
+        self.ckpt_dir = os.path.join(self.output_dir, 'checkpoints')
         self.ckpt_prefixes = ["net_b", "sample_net_b", "optimizer_b", "net_f", "sample_net_f", "optimizer_f"]
-        self.cache_dir = 'cache/'  # Relative to experiment directory
+        self.cache_dir = os.path.join(self.output_dir, 'cache')
         if self.accelerator.is_main_process:
             os.makedirs(self.ckpt_dir, exist_ok=True)
             os.makedirs(self.cache_dir, exist_ok=True)

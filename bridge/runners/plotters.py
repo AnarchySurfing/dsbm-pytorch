@@ -17,7 +17,7 @@ from PIL import Image
 
 DPI = 200
 
-def make_gif(plot_paths, output_directory='./gif', gif_name='gif'):
+def make_gif(plot_paths, output_directory, gif_name='gif'):
     frames = [Image.open(fn) for fn in plot_paths]
 
     frames[0].save(os.path.join(output_directory, f'{gif_name}.gif'),
@@ -30,7 +30,7 @@ def make_gif(plot_paths, output_directory='./gif', gif_name='gif'):
 
 class Plotter(object):
 
-    def __init__(self, ipf, args, im_dir = 'im', gif_dir='gif'):
+    def __init__(self, ipf, args, output_dir='.', im_dir = 'im', gif_dir='gif'):
         self.ipf = ipf
         self.args = args
         self.plot_level = self.args.plot_level
@@ -38,12 +38,13 @@ class Plotter(object):
         self.dataset = self.args.data.dataset
         self.num_steps = self.ipf.test_num_steps
 
-        if self.ipf.accelerator.is_main_process:
-            os.makedirs(im_dir, exist_ok=True)
-            os.makedirs(gif_dir, exist_ok=True)
+        self.output_dir = output_dir
+        self.im_dir = os.path.join(self.output_dir, im_dir)
+        self.gif_dir = os.path.join(self.output_dir, gif_dir)
 
-        self.im_dir = im_dir
-        self.gif_dir = gif_dir
+        if self.ipf.accelerator.is_main_process:
+            os.makedirs(self.im_dir, exist_ok=True)
+            os.makedirs(self.gif_dir, exist_ok=True)
 
         self.metrics_dict = {}
 
@@ -74,7 +75,7 @@ class Plotter(object):
             if use_cache and not self.ipf.cdsb:
                 print("Using cached data for training set evaluation")
                 fp = np.load(cache_filepath_npy[0], mmap_mode="r")
-                all_x = torch.from_numpy(fp[:self.ipf.test_npar])
+                all_x = torch.from_numpy(fp[:self.ipf.test_npar].copy())
                 if fb == 'f':
                     x_start, x_last = all_x[:, 0], all_x[:, 1]
                 else:
@@ -277,8 +278,8 @@ class Plotter(object):
 
 class ImPlotter(Plotter):
 
-    def __init__(self, ipf, args, im_dir = 'im', gif_dir='gif'):
-        super().__init__(ipf, args, im_dir=im_dir, gif_dir=gif_dir)
+    def __init__(self, ipf, args, output_dir='.', im_dir = 'im', gif_dir='gif'):
+        super().__init__(ipf, args, output_dir=output_dir, im_dir=im_dir, gif_dir=gif_dir)
         self.num_plots_grid = 100
 
         self.metrics_dict = {"fid": FID().to(self.ipf.device)}
@@ -374,8 +375,8 @@ class ImPlotter(Plotter):
 
 class DownscalerPlotter(Plotter):
 
-    def __init__(self, ipf, args, im_dir = 'im', gif_dir='gif'):
-        super().__init__(ipf, args, im_dir=im_dir, gif_dir=gif_dir)
+    def __init__(self, ipf, args, output_dir='.', im_dir = 'im', gif_dir='gif'):
+        super().__init__(ipf, args, output_dir=output_dir, im_dir=im_dir, gif_dir=gif_dir)
         self.num_plots_grid = 16
         assert self.ipf.cdsb
 

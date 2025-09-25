@@ -21,16 +21,16 @@ def worker_init_fn(worker_id):
     torch.cuda.manual_seed_all(worker_id)
 
 
-def get_plotter(runner, args):
+def get_plotter(runner, args, output_dir='.'):
     dataset_tag = getattr(args, DATASET)
     if dataset_tag in [DATASET_MNIST, DATASET_EMNIST, DATASET_CIFAR10] or dataset_tag.startswith(DATASET_AFHQ):
-        return ImPlotter(runner, args)
+        return ImPlotter(runner, args, output_dir=output_dir)
     elif dataset_tag in [DATASET_DOWNSCALER_LOW, DATASET_DOWNSCALER_HIGH]:
-        return DownscalerPlotter(runner, args)
+        return DownscalerPlotter(runner, args, output_dir=output_dir)
     elif dataset_tag == DATASET_VISIBLE_INFRARED:
-        return ImPlotter(runner, args)  # Use ImPlotter for spectral images
+        return ImPlotter(runner, args, output_dir=output_dir)  # Use ImPlotter for spectral images
     else:
-        return Plotter(runner, args)
+        return Plotter(runner, args, output_dir=output_dir)
 
 
 # Model
