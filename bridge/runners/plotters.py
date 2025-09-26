@@ -75,7 +75,7 @@ class Plotter(object):
             if use_cache and not self.ipf.cdsb:
                 print("Using cached data for training set evaluation")
                 fp = np.load(cache_filepath_npy[0], mmap_mode="r")
-                all_x = torch.from_numpy(fp[:self.ipf.test_npar].copy())
+                all_x = torch.from_numpy(fp[:self.ipf.test_npar])
                 if fb == 'f':
                     x_start, x_last = all_x[:, 0], all_x[:, 1]
                 else:
