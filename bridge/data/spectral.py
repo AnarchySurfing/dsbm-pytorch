@@ -27,8 +27,7 @@ class PairedSpectralDataset(Dataset, ABC):
     
     def __init__(self, root_dir: str, transform=None, target_transform=None):
         """
-        初始化配对光谱数据集。
-        
+        初始化配对光谱数据集。        
         Args:
             root_dir: 包含数据集的根目录
             transform: 可选的，应用于可见光图像的变换
@@ -54,11 +53,9 @@ class PairedSpectralDataset(Dataset, ABC):
     @abstractmethod
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        从数据集中获取一个配对样本。
-        
+        从数据集中获取一个配对样本。        
         Args:
-            index: 要检索的样本索引
-            
+            index: 要检索的样本索引            
         Returns:
             (visible_rgb, infrared_rgb) 张量的元组，形状为 (C, H, W)
             两个张量都应归一化到 [-1, 1] 范围
@@ -68,8 +65,7 @@ class PairedSpectralDataset(Dataset, ABC):
     @abstractmethod
     def get_metadata(self, index: int) -> Dict[str, Any]:
         """
-        获取特定样本的元数据。
-        
+        获取特定样本的元数据。        
         Args:
             index: 样本的索引
             
@@ -80,8 +76,7 @@ class PairedSpectralDataset(Dataset, ABC):
     
     def validate_pair(self, visible_path: Path, infrared_path: Path) -> bool:
         """
-        验证可见光-红外图像对是否兼容。
-        
+        验证可见光-红外图像对是否兼容。        
         Args:
             visible_path: 可见光图像的路径
             infrared_path: 红外图像的路径
@@ -127,8 +122,7 @@ class PairedSpectralDataset(Dataset, ABC):
     
     def _load_image_as_tensor(self, image_path: Path) -> torch.Tensor:
         """
-        加载图像并将其转换为归一化张量。
-        
+        加载图像并将其转换为归一化张量。        
         Args:
             image_path: 图像文件的路径
             
@@ -183,8 +177,7 @@ class VisibleInfraredDataset(PairedSpectralDataset):
                  target_transform=None,
                  validate_pairs: bool = True):
         """
-        初始化可见光-红外数据集。
-        
+        初始化可见光-红外数据集。        
         Args:
             root_dir: 包含可见光和红外子目录的根目录
             visible_subdir: 包含可见光图像的子目录名称
@@ -224,11 +217,9 @@ class VisibleInfraredDataset(PairedSpectralDataset):
     
     def _find_valid_pairs(self, validate: bool = True) -> List[Tuple[Path, Path]]:
         """
-        在数据集中查找所有有效的可见光-红外图像对。
-        
+        在数据集中查找所有有效的可见光-红外图像对。        
         Args:
-            validate: 是否验证每个图像对
-            
+            validate: 是否验证每个图像对            
         Returns:
             (visible_path, infrared_path) 元组的列表
         """
@@ -361,11 +352,9 @@ class VisibleInfraredDataset(PairedSpectralDataset):
     
     def get_pair_paths(self, index: int) -> Tuple[Path, Path]:
         """
-        获取特定图像对的文件路径。
-        
+        获取特定图像对的文件路径。        
         Args:
-            index: 图像对的索引
-            
+            index: 图像对的索引            
         Returns:
             (visible_path, infrared_path) 的元组
         """
@@ -375,3 +364,91 @@ class VisibleInfraredDataset(PairedSpectralDataset):
         
         # 返回指定索引的可见光和红外图像路径
         return self.valid_pairs[index]
+
+
+class SingleModalityDataset(Dataset):
+    """
+    单模态（可见光或红外）图像数据集，用于域迁移学习。
+    """
+    
+    def __init__(self, 
+                 root_dir: str,
+                 modality: str = "visible",  # "visible" or "infrared"
+                 image_size: Optional[int] = None,
+                 transform=None):
+        """
+        初始化单模态数据集。        
+        Args:
+            root_dir: 包含图像的目录
+            modality: 图像模态，"visible" 或 "infrared"
+            image_size: 可选的目标图像尺寸
+            transform: 可选的图像变换
+        """
+        self.root_dir = Path(root_dir)
+        self.modality = modality
+        self.image_size = image_size
+        self.transform = transform
+        
+        if not self.root_dir.exists():
+            raise FileNotFoundError(f"Dataset directory not found: {root_dir}")
+        
+        # 查找所有图像文件
+        self.image_files = self._find_image_files()
+        
+        if len(self.image_files) == 0:
+            raise ValueError(f"No valid {modality} images found in {root_dir}")
+        
+        print(f"Found {len(self.image_files)} {modality} images")
+    
+    def _find_image_files(self) -> List[Path]:
+        """查找目录中的所有图像文件。"""
+        extensions = {'.jpg', '.jpeg', '.png', '.tiff', '.tif'}
+        image_files = []
+        
+        for ext in extensions:
+            image_files.extend(self.root_dir.glob(f"*{ext}"))
+            image_files.extend(self.root_dir.glob(f"*{ext.upper()}"))
+        
+        return sorted(image_files)
+    
+    def __len__(self) -> int:
+        return len(self.image_files)
+    
+    def __getitem__(self, index: int) -> (torch.Tensor, int):
+        """
+        获取单个图像并返回 (tensor, label) 形式以匹配 torchvision.datasets.MNIST 的输出结构。
+        Returns:
+            (tensor, 0) 形状为 (C, H, W) 的张量，归一化到 [-1, 1]，标签为占位 0
+        """
+        if index >= len(self.image_files):
+            raise IndexError(f"Index {index} out of range")
+        
+        image_path = self.image_files[index]
+        tensor = self._load_image_as_tensor(image_path)
+        
+        # 缩放图像（如果需要）
+        if self.image_size is not None:
+            import torch.nn.functional as F
+            tensor = F.interpolate(
+                tensor.unsqueeze(0),
+                size=(self.image_size, self.image_size),
+                mode='bilinear',
+                align_corners=False
+            ).squeeze(0)
+        
+        # 应用变换（如果有）
+        if self.transform is not None:
+            tensor = self.transform(tensor)
+        
+        return tensor,0  # 返回占位标签 0
+    
+    def _load_image_as_tensor(self, image_path: Path) -> torch.Tensor:
+        """加载图像为张量，归一化到 [-1, 1]。"""
+        try:
+            pil_image = Image.open(image_path).convert('RGB')
+            np_image = np.array(pil_image)
+            tensor_image = (torch.tensor(np_image, dtype=torch.float32) / 255.0) * 2 - 1
+            tensor_image = tensor_image.permute(2, 0, 1)
+            return tensor_image
+        except Exception as e:
+            raise RuntimeError(f"Failed to load image {image_path}: {str(e)}")
