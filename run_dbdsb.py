@@ -29,7 +29,7 @@ def run(args, output_dir):
     # 打印加速器当前状态，确认设备与进程信息
     accelerator.print(accelerator.state)
     # 打印模型中名为 'b' 的子网络结构，便于查看架构
-    accelerator.print(ipf.net['b'])
+    # accelerator.print(ipf.net['b'])
     # 打印可训练参数总数，帮助评估模型规模与资源需求
     accelerator.print('Number of parameters:', sum(p.numel() for p in ipf.net['b'].parameters() if p.requires_grad))
     ipf.train()

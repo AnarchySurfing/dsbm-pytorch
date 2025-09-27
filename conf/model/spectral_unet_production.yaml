@@ -13,6 +13,6 @@ model:
     attention_resolutions: "32,16,8"  # Multi-resolution attention
     dropout: 0.1  # Light regularization
     use_checkpoint: false  # Disable for speed (enable if memory issues)
-    use_scale_shift_norm: true
+    use_scale_shift_norm: True
     resblock_updown: true
     temb_scale: 1000  # Standard scale

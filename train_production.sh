@@ -29,21 +29,21 @@ case $STAGE in
             data.image_size=64 batch_size=32 num_iter=5000 \
             hydra.job.chdir=false "$@"
         ;;
-    "hq")
-        echo "💎 Running HIGH QUALITY training (best results)..."
-        $PYTHON_PATH main.py dataset=visible_infrared_hq model=spectral_conditional_unet \
-            data.image_size=512 batch_size=2 num_iter=200000 \
+    "transfer")
+        echo "🔄 Running TRANSFER training..."
+        $PYTHON_PATH main.py dataset=visible_infrared_transfer model=spectral_unet_production \
+            data.image_size=64 batch_size=32 num_iter=5000 \
             hydra.job.chdir=false "$@"
         ;;
     *)
         echo "❌ Unknown stage: $STAGE"
-        echo "Available stages: stable, production, hq"
+        echo "Available stages: stable, production, transfer"
         echo "Usage: ./train_production.sh [stage] [additional_args...]"
         echo ""
         echo "Examples:"
         echo "  ./train_production.sh stable          # Quick test"
         echo "  ./train_production.sh production      # Recommended"
-        echo "  ./train_production.sh hq              # Best quality"
+        echo "  ./train_production.sh transfer        # Transfer learning"
         echo "  ./train_production.sh production lr=0.00005  # Custom params"
         exit 1
         ;;

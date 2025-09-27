@@ -3,7 +3,7 @@
 # Visible-to-Infrared Transfer Learning Configuration
 # For domain adaptation and transfer learning experiments
 
-cdsb: True  # Enable conditional diffusion for paired data
+cdsb: false # Enable conditional diffusion for paired data
 
 # data 
 Dataset: visible_infrared
@@ -11,10 +11,10 @@ data:
   dataset: "VisibleInfraredTransfer"
   image_size: 256
   channels: 3
-  cond_channels: 3
+  # cond_channels: 3 # 条件通道数，若使用拼接则为 6
   random_flip: true
-  spectral_augmentation: true
-  normalize_method: "adaptive"  # Adaptive normalization for transfer learning
+  spectral_augmentation: false
+  normalize_method: "standard"  # Adaptive normalization for transfer learning
   
   # Transfer learning specific parameters
   spectral:
@@ -27,24 +27,27 @@ data:
     domain_adaptation_weight: 0.1
     
   # Dataset paths
-  root_dir: "data/visible_infrared"
-  visible_subdir: "visible"
-  infrared_subdir: "infrared"
+  # root_dir: "data/visible_infrared"
+  # visible_subdir: "visible"
+  # infrared_subdir: "infrared"
+  root_dir: "/home/myx123/dataset/m3fd"
+  visible_subdir: "vi"
+  infrared_subdir: "ir"
 
 # transfer settings
 transfer: true  # Enable transfer learning mode
 Dataset_transfer: visible_infrared
 
 # Distribution parameters
-final_adaptive: true
-adaptive_mean: true
+final_adaptive: false
+adaptive_mean: false
 mean_final: torch.zeros([${data.channels}, ${data.image_size}, ${data.image_size}])
 var_final: 1 * torch.ones([${data.channels}, ${data.image_size}, ${data.image_size}])
 load: true
 
 # device configuration
 device: cuda
-num_workers: 4
+num_workers: 8
 pin_memory: true
 prefetch_factor: 2
 
@@ -56,7 +59,7 @@ test_npar: 500
 test_batch_size: 16
 cache_npar: 2000
 cache_batch_size: 50
-num_repeat_data: 2  # More data repetition for transfer learning
+num_repeat_data: 1  # More data repetition for transfer learning
 cache_refresh_stride: 1000
 
 # training parameters for transfer learning
