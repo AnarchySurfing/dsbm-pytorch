@@ -233,6 +233,7 @@ def get_datasets(args):
     # INITIAL (DATA) DATASET
 
     data_dir = hydra.utils.to_absolute_path(args.paths.data_dir_name)
+    print(f"Using data directory: {data_dir}")
 
     # MNIST DATASET
     if dataset_tag == DATASET_MNIST:
@@ -281,42 +282,63 @@ def get_datasets(args):
 
     # VISIBLE-INFRARED DATASET
     if dataset_tag == DATASET_VISIBLE_INFRARED:
-        # Get dataset configuration
+        # # Get dataset configuration
+        # root_dir = args.data.get('root_dir', os.path.join(data_dir, 'visible_infrared'))
+        # visible_subdir = args.data.get('visible_subdir', 'visible')
+        # infrared_subdir = args.data.get('infrared_subdir', 'infrared')
+        
+        # # Ensure root directory is absolute path
+        # root_dir = hydra.utils.to_absolute_path(root_dir)
+        
+        # # Create transforms for spectral data
+        # # Note: VisibleInfraredDataset already converts images to tensors in [-1, 1] range
+        # train_transform = []
+        
+        # # Add augmentations if enabled (these work on tensors)
+        # if args.data.get('random_flip', False):
+        #     train_transform.append(transforms.RandomHorizontalFlip())
+        
+        # # Additional spectral augmentations (these work on tensors)
+        # if args.data.get('spectral_augmentation', False):
+        #     # Add color jittering for spectral robustness
+        #     train_transform.append(transforms.ColorJitter(
+        #         brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05
+        #     ))
+        
+        # # Note: Normalization is already handled by the dataset to [-1, 1] range
+        
+        # # Create the dataset
+        # init_ds = VisibleInfraredDataset(
+        #     root_dir=root_dir,
+        #     visible_subdir=visible_subdir,
+        #     infrared_subdir=infrared_subdir,
+        #     image_size=args.data.image_size,
+        #     transform=cmp(train_transform) if train_transform else None,
+        #     validate_pairs=True
+        # )
+
+    # SINGLE VISIBLE DATASET (for domain transfer)
+
+        from bridge.data.spectral import SingleModalityDataset
         root_dir = args.data.get('root_dir', os.path.join(data_dir, 'visible_infrared'))
         visible_subdir = args.data.get('visible_subdir', 'visible')
-        infrared_subdir = args.data.get('infrared_subdir', 'infrared')
+        dataset_dir = os.path.join(root_dir, visible_subdir) 
         
-        # Ensure root directory is absolute path
-        root_dir = hydra.utils.to_absolute_path(root_dir)
-        
-        # Create transforms for spectral data
-        # Note: VisibleInfraredDataset already converts images to tensors in [-1, 1] range
         train_transform = []
-        
-        # Add augmentations if enabled (these work on tensors)
         if args.data.get('random_flip', False):
             train_transform.append(transforms.RandomHorizontalFlip())
-        
-        # Additional spectral augmentations (these work on tensors)
         if args.data.get('spectral_augmentation', False):
-            # Add color jittering for spectral robustness
             train_transform.append(transforms.ColorJitter(
                 brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05
             ))
         
-        # Note: Normalization is already handled by the dataset to [-1, 1] range
-        
-        # Create the dataset
-        init_ds = VisibleInfraredDataset(
-            root_dir=root_dir,
-            visible_subdir=visible_subdir,
-            infrared_subdir=infrared_subdir,
+        init_ds = SingleModalityDataset(
+            root_dir=dataset_dir,
+            modality="visible",
             image_size=args.data.image_size,
-            transform=cmp(train_transform) if train_transform else None,
-            validate_pairs=True
+            transform=cmp(train_transform) if train_transform else None
         )
-
-    # FINAL DATASET
+        # FINAL DATASET
 
     final_ds, mean_final, var_final = get_final_dataset(args, init_ds)
     return init_ds, final_ds, mean_final, var_final
@@ -326,6 +348,7 @@ def get_final_dataset(args, init_ds):
     if args.transfer:
         data_dir = hydra.utils.to_absolute_path(args.paths.data_dir_name)
         dataset_transfer_tag = getattr(args, DATASET_TRANSFER)
+        dataset_source_tag = getattr(args, DATASET)
         mean_final = torch.tensor(0.)
         var_final = torch.tensor(1.*10**3)  # infty like
 
@@ -359,19 +382,64 @@ def get_final_dataset(args, init_ds):
             
             final_ds = DownscalerDataset(root=root, resolution=64, split=split, transform=cmp(train_transform))
 
+        # VISIBLE-INFRARED DATASET for transfer learning
+        if dataset_transfer_tag == DATASET_VISIBLE_INFRARED:
+            # 单模态迁移学习：可见光 -> 红外
+            from bridge.data.spectral import SingleModalityDataset
+            root_dir = args.data.get('root_dir', os.path.join(data_dir, 'visible_infrared'))
+            infrared_subdir = args.data.get('infrared_subdir', 'infrared')
+            dataset_dir = os.path.join(root_dir, infrared_subdir) 
+            
+            train_transform = []
+            if args.data.get('random_flip', False):
+                train_transform.append(transforms.RandomHorizontalFlip())
+            if args.data.get('spectral_augmentation', False):
+                train_transform.append(transforms.ColorJitter(
+                    brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05
+                ))
+            
+            final_ds = SingleModalityDataset(
+                root_dir=dataset_dir,
+                modality="infrared",
+                image_size=args.data.image_size,
+                transform=cmp(train_transform) if train_transform else None
+            )
+                
+
     else:
-        if args.adaptive_mean:
-            vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
-            mean_final = vec.mean(axis=0)
-            var_final = eval(args.var_final) if isinstance(args.var_final, str) else torch.tensor([args.var_final])
-        elif args.final_adaptive:
-            vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
-            mean_final = vec.mean(axis=0)
-            var_final = vec.var(axis=0)
+        dataset_tag = getattr(args, DATASET)
+        
+        # Special handling for VISIBLE_INFRARED dataset
+        if dataset_tag == DATASET_VISIBLE_INFRARED:
+            # For visible-infrared dataset, use the same dataset as final_ds
+            # This ensures proper data distribution rather than Gaussian
+            final_ds = init_ds
+            
+            if args.adaptive_mean:
+                vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
+                mean_final = vec.mean(axis=0)
+                var_final = eval(args.var_final) if isinstance(args.var_final, str) else torch.tensor([args.var_final])
+            elif args.final_adaptive:
+                vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
+                mean_final = vec.mean(axis=0)
+                var_final = vec.var(axis=0)
+            else:
+                mean_final = eval(args.mean_final) if isinstance(args.mean_final, str) else torch.tensor([args.mean_final])
+                var_final = eval(args.var_final) if isinstance(args.var_final, str) else torch.tensor([args.var_final])
         else:
-            mean_final = eval(args.mean_final) if isinstance(args.mean_final, str) else torch.tensor([args.mean_final])
-            var_final = eval(args.var_final) if isinstance(args.var_final, str) else torch.tensor([args.var_final])
-        final_ds = None
+            # Original logic for other datasets
+            if args.adaptive_mean:
+                vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
+                mean_final = vec.mean(axis=0)
+                var_final = eval(args.var_final) if isinstance(args.var_final, str) else torch.tensor([args.var_final])
+            elif args.final_adaptive:
+                vec = next(iter(DataLoader(init_ds, batch_size=NAPPROX, num_workers=args.num_workers, worker_init_fn=worker_init_fn)))[0]
+                mean_final = vec.mean(axis=0)
+                var_final = vec.var(axis=0)
+            else:
+                mean_final = eval(args.mean_final) if isinstance(args.mean_final, str) else torch.tensor([args.mean_final])
+                var_final = eval(args.var_final) if isinstance(args.var_final, str) else torch.tensor([args.var_final])
+            final_ds = None
 
     return final_ds, mean_final, var_final
 
