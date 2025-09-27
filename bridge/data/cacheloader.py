@@ -15,7 +15,7 @@ class MemMapTensorDataset(Dataset):
     def __getitem__(self, index):
         out = []
         for data_file in self.data_file_list:
-            data = torch.from_numpy(data_file[index])
+            data = torch.from_numpy(data_file[index].copy())
             out = out + [d for d in data]
         return out
 
