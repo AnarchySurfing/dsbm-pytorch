@@ -10,7 +10,10 @@ from accelerate import Accelerator
 
 def run(args, output_dir):
     # 根据 args.device 决定是否使用 CPU，并启用批次拆分以节省内存
-    accelerator = Accelerator(cpu=args.device == 'cpu', split_batches=True)
+    # accelerator = Accelerator(cpu=args.device == 'cpu', split_batches=True)
+    # 在 CPU 模式下禁用混合精度；否则使用 args.mixed_precision（若未提供则默认 'bf16'）
+    mixed_precision = 'no' if args.device == 'cpu' else getattr(args, 'mixed_precision', 'bf16')
+    accelerator = Accelerator(cpu=args.device == 'cpu', split_batches=True, mixed_precision=mixed_precision)
     # 打印当前工作目录，便于调试和日志记录
     accelerator.print('Directory: ' + output_dir)
 
